@@ -1,7 +1,18 @@
-part of 'participant.dart';
+import 'dart:convert';
+
+import 'package:collection/collection.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
+
+import '../utils/constants.dart';
+import '../utils/logger.dart';
+import '../widgets/screen_select_dialog.dart';
+import 'participant.dart';
+import 'stream_mode.dart';
+import 'video_params.dart';
 
 class LocalParticipant extends Participant {
-  bool _published = false;
+  final bool _published = false;
   bool _audioOnly = false;
   bool audioActive = true;
   bool videoActive = false;
@@ -9,6 +20,12 @@ class LocalParticipant extends Participant {
   int frameRate = 0;
   int width = 0;
   int height = 0;
+
+  StreamMode _mode = StreamMode.frontCamera;
+
+  LocalParticipant.preview(MediaStream stream) : super.preview() {
+    this.stream = stream;
+  }
 
   LocalParticipant(
     super.id,
@@ -18,6 +35,7 @@ class LocalParticipant extends Participant {
     required StreamMode mode,
     required VideoParams videoParams,
   }) {
+    _mode = mode;
     this.stream = stream;
     audioActive = true;
 
@@ -42,7 +60,6 @@ class LocalParticipant extends Participant {
   Future<void> _publishLocalStream() async {
     if (stream == null || _published == true) return;
     try {
-      await _initPeerConnection();
       final connection = await peerConnection;
       switch (sdpSemantics) {
         case "plan-b":
@@ -84,6 +101,57 @@ class LocalParticipant extends Participant {
     }
   }
 
+  Future<void> shareScreen(BuildContext context) async {
+    Map<String, dynamic> mediaConstraints = {
+      'audio': false,
+      'video': true,
+    };
+    if (WebRTC.platformIsDesktop) {
+      // ignore: use_build_context_synchronously
+      final source = await showDialog<DesktopCapturerSource>(
+        context: context,
+        builder: (context) => ScreenSelectDialog(),
+      );
+      stream = await navigator.mediaDevices.getDisplayMedia(<String, dynamic>{
+        'video': source == null
+            ? true
+            : {
+                'deviceId': {'exact': source.id},
+                'mandatory': {'frameRate': 30.0}
+              }
+      });
+    } else {
+      stream = await navigator.mediaDevices.getDisplayMedia(mediaConstraints);
+    }
+
+    final connection = await peerConnection;
+    final senders = await connection.senders;
+
+    for (var sender in senders) {
+      if (sender.track!.kind == 'video') {
+        sender.replaceTrack(stream?.getVideoTracks()[0]);
+      }
+    }
+    _mode = StreamMode.screen;
+  }
+
+  Future<void> setAudioInput(String deviceId) async {
+    final connection = await peerConnection;
+    final senders = await connection.senders;
+
+    for (var sender in senders) {
+      if (sender.track!.kind == 'audio') {
+        sender.replaceTrack(stream?.getTrackById(deviceId));
+      }
+    }
+  }
+
+  Future<void> selectVideoInput(String deviceId) async {
+    final track = stream?.getVideoTracks().firstOrNull;
+    if (track == null) return;
+    await Helper.switchCamera(track, deviceId, stream);
+  }
+
   void switchCamera() async {
     if (stream == null) return;
     final List<MediaStreamTrack> tracks = stream?.getVideoTracks() ?? [];
@@ -112,7 +180,7 @@ class LocalParticipant extends Participant {
     Object value,
     String reason,
   ) async {
-    if (!rpc.isActive || !_published) return;
+    if (!rpc.isActive) return;
     await rpc.send(
       "streamPropertyChanged",
       params: {
@@ -122,16 +190,5 @@ class LocalParticipant extends Participant {
         "reason": reason,
       },
     );
-  }
-
-  @override
-  Future<void> close() {
-    stream?.getTracks().forEach((track) async {
-      await track.stop();
-    });
-    _published = false;
-    logger.i('$objectId Closed');
-    stream?.dispose();
-    return super.close();
   }
 }

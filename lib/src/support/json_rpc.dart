@@ -8,10 +8,40 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../models/error_code.dart' as error_code;
 import '../utils/logger.dart';
-import 'websocket/open_vidu_websocket.dart';
+
+// class WebSocketException implements Exception {
+//   final int code;
+//   const WebSocketException._(this.code);
+
+//   static WebSocketException unknown() => const WebSocketException._(0);
+//   static WebSocketException connect() => const WebSocketException._(1);
+
+//   @override
+//   String toString() => {
+//         WebSocketException.unknown(): 'Unknown error',
+//         WebSocketException.connect(): 'Failed to connect',
+//       }[this]!;
+// }
+
+typedef WebSocketOnData = Function(Map<String, dynamic> data);
+typedef WebSocketOnError = Function(dynamic error);
+typedef WebSocketOnDispose = Function();
+
+class WebSocketEventHandlers {
+  final WebSocketOnData? onData;
+  final WebSocketOnError? onError;
+  final WebSocketOnDispose? onDispose;
+
+  const WebSocketEventHandlers({
+    this.onData,
+    this.onError,
+    this.onDispose,
+  });
+}
 
 class JsonRpc {
   int _internalId = 0;
+  bool isActive = false;
   final Map<int, _Request> _pendingRequests = {};
 
   late WebSocketOnData _onData;
@@ -31,14 +61,17 @@ class JsonRpc {
   connect(String url) async {
     logger.d(url);
     try {
-      _channel = WebSocketChannel.connect(
-          Uri.parse("wss://openvidu.kambda.com:4443/openvidu"));
+      _channel = WebSocketChannel.connect(Uri.parse(url));
+      isActive = true;
       _channel.stream.listen(
         (event) {
           final response = json.decode(event) as Map<String, dynamic>;
 
-          _onData(response);
-          _handleResponse(response);
+          if (!(response.containsKey('result') &&
+              response['result']['value'] == 'pong')) {
+            _onData(response);
+            _handleResponse(response);
+          }
         },
         onError: _onError,
         onDone: _onDispose,
@@ -90,6 +123,8 @@ class JsonRpc {
     }
   }
 
+  _isPong() {}
+
   /// Handles a decoded response from the server after batches have been
   /// resolved.
   void _handleSingleResponse(response) {
@@ -100,11 +135,9 @@ class JsonRpc {
     var request = _pendingRequests.remove(id)!;
     if (response.containsKey('result')) {
       request.completer.complete(response['result']);
-    } else {
-      request.completer.completeError(
-        RpcException(response['error']['code'], response['error']['message'],
-            data: response['error']['data']),
-      );
+    } else if (response.containsKey('error')) {
+      _onError(response['error']['message']);
+      request.completer.completeError('Unknown failure, please reconnect');
     }
   }
 

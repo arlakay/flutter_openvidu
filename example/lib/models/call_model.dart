@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:openvidu_client/openvidu_client.dart';
 
+import '../app/utils/logger.dart';
+
 class CallModel extends ChangeNotifier {
   OpenViduClient? _session;
   MediaStream? _localStream;
@@ -25,13 +27,18 @@ class CallModel extends ChangeNotifier {
 
   Future<void> start(BuildContext context, String userName, String token,
       StreamMode mode) async {
+    print('HACE LA LLAMADA');
+    logger.i('HACE LA LLAMADA');
     try {
       _session = OpenViduClient(token);
-      _localStream = await _session!.startLocalPreview(context, mode);
+      // _localStream = await _session!.startLocalPreview(context, mode);
       _listenSessionEvents();
-      await _session!.connect(userName);
+      // await _session!.connect();
+
+      await _session!.publishLocalStream(token: token, userName: 'Usuario');
       notifyListeners();
     } catch (e) {
+      logger.e(e);
       _error = e is OpenViduError ? e : OtherError();
       await stop();
     }
@@ -39,19 +46,20 @@ class CallModel extends ChangeNotifier {
 
   enter() async {
     if (_enterd || _session == null) return;
-    await _session!.publishLocalStream();
+    // await _session!.publishLocalStream();
+    // await _session!.publishLocalStream();
     _enterd = true;
     notifyListeners();
   }
 
   void _listenSessionEvents() {
     if (_session == null) return;
+    _session!.on(OpenViduEvent.joinRoom, (params) => null);
     _session!.on(OpenViduEvent.userJoined, (params) async {
       await _session!.subscribeRemoteStream(params["id"]);
     });
     _session!.on(OpenViduEvent.userPublished, (params) {
-      print('PARAMS');
-      print(params);
+      logger.i(params);
       _session!.subscribeRemoteStream(params["id"]);
     });
 

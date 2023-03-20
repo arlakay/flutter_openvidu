@@ -1,13 +1,13 @@
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
-import '../models/token.dart';
 import '../support/json_rpc.dart';
 import '../utils/constants.dart';
+import 'token.dart';
 
-abstract class Connection {
-  final String id;
-  final Token token;
-  final JsonRpc rpc;
+abstract class Participant {
+  late String id;
+  late Token token;
+  late JsonRpc rpc;
   MediaStream? stream;
   String streamId = '';
   late Future<RTCPeerConnection> peerConnection;
@@ -32,8 +32,36 @@ abstract class Connection {
 
   final List<RTCIceCandidate> _candidateTemps = [];
 
-  Connection(this.id, this.token, this.rpc) {
+  Participant(this.id, this.token, this.rpc) {
     peerConnection = _getPeerConnection();
+  }
+
+  Participant.preview() {
+    peerConnection = _getPrePeerConnection();
+  }
+
+  Future<RTCPeerConnection> _getPrePeerConnection() async {
+    final connection =
+        await createPeerConnection(_getPrevConfiguration(), _config);
+    connection.onIceCandidate = (candidate) {
+      Map<String, dynamic> iceCandidateParams = {
+        'sdpMid': candidate.sdpMid,
+        'sdpMLineIndex': candidate.sdpMLineIndex,
+        'candidate': candidate.candidate,
+      };
+      rpc.send(Methods.onIceCandidate, params: iceCandidateParams);
+    };
+
+    connection.onSignalingState = (state) {
+      if (state == RTCSignalingState.RTCSignalingStateStable) {
+        for (var i in _candidateTemps) {
+          connection.addCandidate(i);
+        }
+        _candidateTemps.clear();
+      }
+    };
+
+    return connection;
   }
 
   Future<RTCPeerConnection> _getPeerConnection() async {
@@ -58,6 +86,26 @@ abstract class Connection {
     };
 
     return connection;
+  }
+
+  Map<String, dynamic> _getPrevConfiguration() {
+    return {
+      "iceServers": [
+        {
+          "urls": [
+            "turn:173.194.72.127:19305?transport=udp",
+            "turn:[2404:6800:4008:C01::7F]:19305?transport=udp",
+            "turn:173.194.72.127:443?transport=tcp",
+            "turn:[2404:6800:4008:C01::7F]:443?transport=tcp"
+          ],
+          "username": "CKjCuLwFEgahxNRjuTAYzc/s6OMT",
+          "credential": "u1SQDR/SQsPQIxXNWQT7czc/G4c="
+        },
+        {
+          "urls": ["stun:stun.l.google.com:19302"]
+        }
+      ]
+    };
   }
 
   Map<String, dynamic> _getConfiguration() {
@@ -85,29 +133,6 @@ abstract class Connection {
     connection.close();
     connection.dispose();
     stream?.dispose();
-  }
-
-  void enableVideo(bool enable) {
-    if (stream == null) return;
-    stream!.getVideoTracks().forEach((track) {
-      track.enabled = enable;
-    });
-  }
-
-  void enableAudio(bool enable) {
-    if (stream == null) return;
-
-    stream!.getAudioTracks().forEach((track) {
-      track.enabled = enable;
-    });
-  }
-
-  void enableSpeakerphone(bool enable) {
-    if (stream == null || !WebRTC.platformIsMobile) return;
-
-    stream!.getAudioTracks().forEach((track) {
-      track.enableSpeakerphone(enable);
-    });
   }
 
   Future<void> addIceCandidate(Map<String, dynamic> candidate) async {

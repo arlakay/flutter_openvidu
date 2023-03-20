@@ -1,17 +1,16 @@
-import '../../openvidu_client.dart';
-import '../models/token.dart';
-import '../support/json_rpc.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
+
 import '../utils/constants.dart';
 import '../utils/logger.dart';
+import 'openvidu_events.dart';
 import 'participant.dart';
 
 class RemoteParticipant extends Participant {
   final Map<String, dynamic>? metadata;
-  RemoteParticipant(String id, Token token, JsonRpc rpc, this.metadata)
-      : super(id, token, rpc);
+  RemoteParticipant(super.id, super.token, super.rpc, this.metadata);
 
   Future<void> subscribeStream(
-    MediaStream stream,
+    // MediaStream stream,
     EventDispatcher dispatchEvent,
     bool video,
     bool audio,
@@ -30,8 +29,9 @@ class RemoteParticipant extends Participant {
         this.stream = stream;
         dispatchEvent(OpenViduEvent.removeStream, {"id": id, "stream": stream});
       };
+      stream = await _createStream();
 
-      await connection.addStream(stream);
+      await connection.addStream(stream!);
 
       final offer = await connection.createOffer(constraints);
 
@@ -47,6 +47,18 @@ class RemoteParticipant extends Participant {
     } catch (e) {
       logger.e(e);
     }
+  }
+
+  Future<MediaStream> _createStream() async {
+    Map<String, dynamic> mediaConstraints = {
+      'audio': true,
+      'video': {
+        'facingMode': 'user',
+        'optional': [],
+      }
+    };
+
+    return await navigator.mediaDevices.getDisplayMedia(mediaConstraints);
   }
 
   @override

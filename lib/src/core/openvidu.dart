@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 
@@ -6,52 +5,53 @@ import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../models/error.dart';
+import '../models/local_participant.dart';
 import '../models/openvidu_events.dart';
+import '../models/remote_participant.dart';
 import '../models/stream_mode.dart';
 import '../models/token.dart';
 import '../models/video_params.dart';
-import '../participants/local_participant.dart';
-import '../participants/remote_participant.dart';
 import '../support/json_rpc.dart';
 import '../support/platform/device_info.dart'
     if (dart.library.js) '../support/platform/device_info_web.dart';
 import '../utils/constants.dart';
 import '../utils/logger.dart';
-import 'stream_creator.dart';
+import '../widgets/screen_select_dialog.dart';
 
 class OpenViduClient {
-  // Conecction information
   late Token _token;
   bool _active = true;
   JsonRpc? _rpc;
+  String _userId = '';
+
+  EventHandler _handlers = {};
+
+  /* ---------------------------- LOCAL CONNECCTION --------------------------- */
+  StreamMode _mode = StreamMode.frontCamera;
+  VideoParams _videoParams = VideoParams.middle;
+
+  LocalParticipant? _localParticipant;
+
+  /* --------------------------- REMOTE CONNECTIONS --------------------------- */
 
   /// map of SID to RemoteParticipant
-  UnmodifiableMapView<String, RemoteParticipant> get participants =>
+  List<RemoteParticipant> get participants => _participants.values.toList();
+
+  UnmodifiableMapView<String, RemoteParticipant> get participantsIds =>
       UnmodifiableMapView(_participants);
   final _participants = <String, RemoteParticipant>{};
 
-  /// the current participant
-  LocalParticipant? get localParticipant => _localParticipant;
-  LocalParticipant? _localParticipant;
-
-  Map<OpenViduEvent, Function(Map<String, dynamic> params)> _handlers = {};
-
-  Future<List<MediaDeviceInfo>> get videoInputs =>
-      Helper.enumerateDevices('videoinput');
-  Future<List<MediaDeviceInfo>> get audioInputs =>
-      Helper.enumerateDevices('audioinput');
-  Future<List<MediaDeviceInfo>> get audioOutputs =>
-      Helper.enumerateDevices('audiooutput');
-
-  OpenViduClient(url) {
-    _token = Token(url);
-    navigator.mediaDevices.enumerateDevices();
+  OpenViduClient(String serverUrl) {
+    print('INICIA OPENVIDUCLI');
+    _token = Token(serverUrl);
   }
 
-  Future<void> connect(
-    String userName, {
-    Map<String, dynamic>? extraData,
-  }) async {
+  Future<LocalParticipant?> startLocalPreview(
+      BuildContext context, StreamMode mode,
+      {VideoParams? videoParams = VideoParams.middle}) async {
+    _videoParams = videoParams ?? VideoParams.middle;
+    _mode = mode;
+
     _rpc = JsonRpc(
       onData: _onRpcMessage,
       onError: _onSocketError,
@@ -59,125 +59,66 @@ class OpenViduClient {
     );
 
     try {
-      await _rpc?.connect(_token.url);
+      await _rpc?.connect(_token.wss);
       _heartbeat();
     } catch (e) {
+      logger.e(e);
       _rpc?.disconnect();
       throw NetworkError();
     }
 
-    final response = await _joinRoom({"clientData": userName, ...?extraData});
-
-    _token.appendInfo(
-      role: response["role"],
-      coturnIp: response["coturnIp"],
-      turnCredential: response["turnCredential"],
-      turnUsername: response["turnUsername"],
-    );
-
-    _dispatchEvent(OpenViduEvent.joinRoom, response);
-
     try {
-      _localParticipant = LocalParticipant(response["id"], _token, _rpc!);
-      _addAlreadyInRoomConnections(response);
+      if (_rpc == null) return null;
+      // ignore: use_build_context_synchronously
+      final stream = await _createStream(context);
+      _localParticipant = LocalParticipant.preview(stream);
+      return _localParticipant;
     } catch (e) {
-      throw OtherError();
-    }
-  }
-
-  Future<void> disconnect() async {
-    await _rpc?.send(Methods.leaveRoom);
-    StreamCreator.stream?.getTracks().forEach((track) async {
-      debugPrint(track.toString());
-      await track.stop();
-    });
-    _active = false;
-    // clean up RemoteParticipants
-    var participants = _participants.values.toList();
-    await Future.wait(participants.map((e) {
-      return e.close();
-    }));
-    _participants.clear();
-    // clean up LocalParticipant
-    await _localParticipant?.close();
-
-    debugPrint('Cierra local');
-    if (_localParticipant == null) StreamCreator.stream?.dispose();
-    await _rpc?.disconnect();
-  }
-
-  void _onSocketError(dynamic error) {
-    debugPrint('received websocket error $error');
-    logger.w('received websocket error $error');
-  }
-
-  Future<MediaStream?> startLocalPreview(BuildContext context, StreamMode mode,
-      {VideoParams? videoParams}) async {
-    videoParams = videoParams ?? VideoParams.middle;
-    try {
-      return await StreamCreator.create(mode,
-          context: context, videoParams: videoParams);
-    } catch (e) {
+      logger.e('[StartPreview] $e');
       throw NotPermissionError();
     }
   }
 
-  Future<void> stopLocalPreview() async => StreamCreator.dispose();
+  Future<void> stopLocalPreview() async => disconnect();
 
-  Future<void> publishLocalStream({bool video = true, bool audio = true}) {
-    if (StreamCreator.stream == null || _localParticipant == null) {
+  Future<LocalParticipant?> publishLocalStream({
+    required String token,
+    required String userName,
+    Map<String, dynamic>? extraData,
+  }) async {
+    if (_localParticipant == null || _localParticipant?.stream == null) {
       throw "Please call startLocalPreview first";
     }
+    _token.setToken(token);
+    try {
+      final response = await _joinRoom({"clientData": userName, ...?extraData});
+      _userId = response["id"];
 
-    _localParticipant!.setStream(
-      StreamCreator.stream!,
-      StreamCreator.mode,
-      StreamCreator.videoParams,
-    );
+      _token.appendInfo(
+        role: response["role"],
+        coturnIp: response["coturnIp"],
+        turnCredential: response["turnCredential"],
+        turnUsername: response["turnUsername"],
+      );
 
-    return _localParticipant!.publishStream(video, audio);
-  }
+      _dispatchEvent(OpenViduEvent.joinRoom, response);
 
-  void setAudioInput(String deviceId) async {
-    await Helper.selectAudioInput(deviceId);
-  }
+      _localParticipant = await _createParticipant(
+        response["id"],
+      );
 
-  void switchCamera() async {
-    if (_localParticipant?.stream == null) return;
-    final List<MediaStreamTrack> tracks =
-        _localParticipant?.stream?.getVideoTracks() ?? [];
-    if (tracks.isEmpty) return;
-    Helper.switchCamera(tracks[0]);
-  }
-
-  void muteMic() {
-    if (_localParticipant?.stream != null) {
-      final List<MediaStreamTrack> tracks =
-          _localParticipant?.stream?.getAudioTracks() ?? [];
-      if (tracks.isEmpty) return;
-      bool enabled = tracks[0].enabled;
-      Helper.setMicrophoneMute(!enabled, tracks[0]);
+      _addAlreadyInRoomConnections(response);
+      return _localParticipant;
+    } catch (e) {
+      throw OtherError();
     }
-  }
-
-  Future<void> publishVideo(bool enable) {
-    if (_localParticipant == null) {
-      throw "Please call startLocalPreview first";
-    }
-    return _localParticipant!.publishVideo(enable);
-  }
-
-  Future<void> publishAudio(bool enable) {
-    if (_localParticipant == null) {
-      throw "Please call startLocalPreview first";
-    }
-    return _localParticipant!.publishAudio(enable);
   }
 
   Future<void> subscribeRemoteStream(String id,
       {bool video = true, bool audio = true, bool speakerphone = false}) async {
     if (!_participants.containsKey(id)) return;
     _participants[id]!.subscribeStream(
+      // _localParticipant!.stream!,
       _dispatchEvent,
       video,
       audio,
@@ -185,28 +126,33 @@ class OpenViduClient {
     );
   }
 
-  void setRemoteVideo(String id, bool enable) {
-    if (!_participants.containsKey(id)) return;
-    _participants[id]!.enableVideo(enable);
+  void _addRemoteConnection(Map<String, dynamic> model) {
+    final id = model["id"];
+    if (id == _userId) return;
+    model["metadata"] = model["metadata"].replaceAll('}%/%{', ',');
+    String userName = ''; // _getUserName(model);
+    final connection =
+        RemoteParticipant(id, _token, _rpc!, json.decode(model['metadata']));
+    _participants[id] = connection;
+    _dispatchEvent(OpenViduEvent.userJoined, {"id": id, "userName": userName});
+    logger.d(model["streams"]);
+    if (model["streams"] != null) {
+      _dispatchEvent(
+          OpenViduEvent.userPublished, {"id": id, "userName": userName});
+    }
   }
 
-  void setRemoteAudio(String id, bool enable) {
-    if (!_participants.containsKey(id)) return;
-    _participants[id]!.enableAudio(enable);
-  }
-
-  void setRemoteSpeakerphone(String id, bool enable) {
-    if (!_participants.containsKey(id)) return;
-    _participants[id]!.enableSpeakerphone(enable);
-  }
-
-  void on(OpenViduEvent event, Function(Map<String, dynamic> params) handler) {
-    _handlers = {..._handlers, event: handler};
+  void _addAlreadyInRoomConnections(Map<String, dynamic> model) {
+    if (!model.containsKey("value")) return;
+    final list = model["value"] as List<dynamic>;
+    for (var c in list) {
+      _addRemoteConnection(c);
+    }
   }
 
   Future<Map<String, dynamic>> _joinRoom(Map<String, dynamic> metadata) async {
     final initializeParams = {
-      "token": _token.url,
+      "token": _token.token,
       "session": _token.sessionId,
       "platform": DeviceInfo.userAgent,
       "secret": "",
@@ -226,60 +172,75 @@ class OpenViduClient {
     }
   }
 
-  void _dispatchEvent(OpenViduEvent event, Map<String, dynamic> params) {
-    if (event == OpenViduEvent.error) _active = false;
-    logger.i(event);
-    logger.i(_handlers.keys);
-    if (!_handlers.containsKey(event)) return;
-    final handler = _handlers[event];
-    if (handler != null) handler(params);
+  Future<LocalParticipant> _createParticipant(String id) async {
+    final locaStream = _localParticipant!.stream!;
+    return LocalParticipant(
+      id,
+      _token,
+      _rpc!,
+      stream: locaStream,
+      mode: _mode,
+      videoParams: _videoParams,
+    );
   }
 
-  Future<void> _heartbeat() async {
-    try {
-      await _rpc?.send(Methods.ping,
-          params: {"interval": 3000}, hasResult: true);
-    } catch (e) {
-      _dispatchEvent(OpenViduEvent.error, {"error": NetworkError()});
-    }
-
-    Future<void> loop() async {
-      while (_active) {
-        await Future.delayed(const Duration(seconds: 3));
-        if (!_active) break;
-
-        try {
-          await _rpc?.send(Methods.ping, hasResult: true);
-        } catch (e) {
-          _dispatchEvent(OpenViduEvent.error, {"error": NetworkError()});
-        }
+  Future<MediaStream> _createStream(BuildContext context) async {
+    Map<String, dynamic> mediaConstraints = {
+      'audio': _mode == StreamMode.screen
+          ? false
+          : {
+              'optional': {
+                'echoCancellation': true,
+                'googDAEchoCancellation': true,
+                'googEchoCancellation': true,
+                'googEchoCancellation2': true,
+                'noiseSuppression': true,
+                'googNoiseSuppression': true,
+                'googNoiseSuppression2': true,
+                'googAutoGainControl': true,
+                'googHighpassFilter': false,
+                'googTypingNoiseDetection': true,
+              },
+            },
+      'video': _mode == StreamMode.screen
+          ? true
+          : {
+              'facingMode':
+                  _mode == StreamMode.frontCamera ? 'user' : 'environment',
+              'optional': [],
+            }
+    };
+    late MediaStream stream;
+    if (_mode == StreamMode.screen) {
+      if (WebRTC.platformIsDesktop) {
+        // ignore: use_build_context_synchronously
+        final source = await showDialog<DesktopCapturerSource>(
+          context: context,
+          builder: (context) => ScreenSelectDialog(),
+        );
+        stream = await navigator.mediaDevices.getDisplayMedia(<String, dynamic>{
+          'video': source == null
+              ? true
+              : {
+                  'deviceId': {'exact': source.id},
+                  'mandatory': {'frameRate': 30.0}
+                }
+        });
+      } else {
+        stream = await navigator.mediaDevices.getDisplayMedia(mediaConstraints);
       }
+    } else {
+      stream = await navigator.mediaDevices
+          .getUserMedia({'audio': true, 'video': true});
     }
 
-    loop();
+    return stream;
   }
 
-  void _addAlreadyInRoomConnections(Map<String, dynamic> model) {
-    if (!model.containsKey("value")) return;
-    final list = model["value"] as List<dynamic>;
-    for (var c in list) {
-      _addRemoteConnection(c);
-    }
-  }
+  /* ----------------------------- SOCKET MANAGER ----------------------------- */
 
-  void _addRemoteConnection(Map<String, dynamic> model) {
-    final id = model["id"];
-    model["metadata"] = model["metadata"].replaceAll('}%/%{', ',');
-    String userName = ''; // _getUserName(model);
-    final connection =
-        RemoteParticipant(id, _token, _rpc!, json.decode(model['metadata']));
-    _participants[id] = connection;
-    _dispatchEvent(OpenViduEvent.userJoined, {"id": id, "userName": userName});
-    logger.d(model["streams"]);
-    if (model["streams"] != null) {
-      _dispatchEvent(
-          OpenViduEvent.userPublished, {"id": id, "userName": userName});
-    }
+  void on(OpenViduEvent event, Function(Map<String, dynamic> params) handler) {
+    _handlers = {..._handlers, event: handler};
   }
 
   void _onRpcMessage(Map<String, dynamic> message) {
@@ -340,19 +301,61 @@ class OpenViduClient {
     }
   }
 
-  String _getUserName(Map<String, dynamic> params) {
-    String userName = 'OpenVidu_User';
+  void _onSocketError(dynamic error) {
+    logger.e('received websocket error $error');
+  }
 
+  Future<void> _heartbeat() async {
     try {
-      if (params["metadata"] != null) {
-        params["metadata"] = params["metadata"].replaceAll('}%/%{', ',');
-        final clientData = json.decode(params["metadata"]);
-        userName = clientData["clientData"];
-      }
+      await _rpc?.send(Methods.ping,
+          params: {"interval": 3000}, hasResult: true);
     } catch (e) {
-      logger.w('Problem decoding metadata');
+      _dispatchEvent(OpenViduEvent.error, {"error": NetworkError()});
     }
 
-    return userName;
+    Future<void> loop() async {
+      while (_active) {
+        await Future.delayed(const Duration(seconds: 3));
+        if (!_active) break;
+
+        try {
+          await _rpc?.send(Methods.ping, hasResult: true);
+        } catch (e) {
+          _dispatchEvent(OpenViduEvent.error, {"error": NetworkError()});
+        }
+      }
+    }
+
+    loop();
+  }
+
+  void _dispatchEvent(OpenViduEvent event, Map<String, dynamic> params) {
+    if (event == OpenViduEvent.error) _active = false;
+    logger.i(event);
+    logger.i(_handlers.keys);
+    if (!_handlers.containsKey(event)) return;
+    final handler = _handlers[event];
+    if (handler != null) handler(params);
+  }
+
+  Future<void> disconnect() async {
+    await _rpc?.send(Methods.leaveRoom);
+
+    // for (var track in StreamCreator.stream?.getTracks() ?? []) {
+    //   await track?.stop();
+    // }
+    _active = false;
+    // clean up RemoteParticipants
+    var participants = _participants.values.toList();
+    for (var participant in participants) {
+      await participant.close();
+    }
+    _participants.clear();
+    // clean up LocalParticipant
+    await _localParticipant?.close();
+
+    debugPrint('Cierra local');
+    // if (_localParticipant == null) StreamCreator.stream?.dispose();
+    await _rpc?.disconnect();
   }
 }

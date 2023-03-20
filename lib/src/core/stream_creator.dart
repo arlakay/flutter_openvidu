@@ -77,6 +77,10 @@ class StreamCreator {
   }
 
   static Future<void> dispose() async {
+    stream?.getTracks().forEach((track) async {
+      debugPrint(track.toString());
+      await track.stop();
+    });
     await _stream?.dispose();
     _stream = null;
     _mode = null;
