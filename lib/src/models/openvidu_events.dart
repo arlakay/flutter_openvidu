@@ -1,0 +1,16 @@
+enum OpenViduEvent {
+  joinRoom,
+  userJoined,
+  userPublished,
+  error,
+  addStream,
+  removeStream,
+  publishVideo,
+  publishAudio,
+  audioActive,
+  videoActive,
+  audioTrack,
+  videoTrack,
+  videoDimensions,
+  sendMessage,
+}
