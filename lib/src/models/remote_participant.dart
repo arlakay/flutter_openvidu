@@ -21,6 +21,8 @@ class RemoteParticipant extends Participant {
 
       connection.onAddStream = (stream) {
         this.stream = stream;
+        audioActive = audio;
+        videoActive = video;
         dispatchEvent(OpenViduEvent.addStream,
             {"id": id, "stream": stream, "metadata": metadata});
       };

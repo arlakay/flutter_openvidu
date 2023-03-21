@@ -51,4 +51,52 @@ extension LKExampleExt on BuildContext {
           ],
         ),
       );
+  Future<bool?> showDisconnectDialog() => showDialog<bool>(
+        context: this,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Disconnect'),
+          content: const Text('Are you sure to disconnect?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Disconnect'),
+            ),
+          ],
+        ),
+      );
+  Future<bool?> showSendDataDialog() => showDialog<bool>(
+        context: this,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Send data'),
+          content: const Text(
+              'This will send a sample data to all participants in the room'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Send'),
+            ),
+          ],
+        ),
+      );
+  Future<bool?> showMessageRecivedDialog(String message) => showDialog<bool>(
+        context: this,
+        builder: (ctx) => AlertDialog(
+          title: const Text('New Message'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK'),
+            )
+          ],
+        ),
+      );
 }

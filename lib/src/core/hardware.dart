@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
+import '../utils/logger.dart';
+
 class MediaDevice {
   const MediaDevice(this.deviceId, this.label, this.kind);
 
@@ -55,13 +57,18 @@ class Hardware {
   MediaDevice? selectedVideoInput;
 
   Future<List<MediaDevice>> enumerateDevices({String? type}) async {
-    var infos = await navigator.mediaDevices.enumerateDevices();
-    var devices =
-        infos.map((e) => MediaDevice(e.deviceId, e.label, e.kind!)).toList();
-    if (type != null && type.isNotEmpty) {
-      devices = devices.where((d) => d.kind == type).toList();
+    try {
+      var infos = await navigator.mediaDevices.enumerateDevices();
+      var devices =
+          infos.map((e) => MediaDevice(e.deviceId, e.label, e.kind!)).toList();
+      if (type != null && type.isNotEmpty) {
+        devices = devices.where((d) => d.kind == type).toList();
+      }
+      return devices;
+    } catch (e) {
+      logger.e(e);
+      return [];
     }
-    return devices;
   }
 
   Future<List<MediaDevice>> audioInputs() async {

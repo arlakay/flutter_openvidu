@@ -11,6 +11,8 @@ abstract class Participant {
   MediaStream? stream;
   String? streamId;
   late Future<RTCPeerConnection> peerConnection;
+  bool audioActive = false;
+  bool videoActive = false;
 
   final Map<String, dynamic> constraints = {
     'mandatory': {
@@ -132,6 +134,9 @@ abstract class Participant {
   }
 
   Future<void> close() async {
+    stream?.getTracks().forEach((track) async {
+      await track.stop();
+    });
     final connection = await peerConnection;
     connection.close();
     connection.dispose();

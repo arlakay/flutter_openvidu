@@ -7,6 +7,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../models/error.dart';
 import '../models/local_participant.dart';
 import '../models/openvidu_events.dart';
+import '../models/ov_message.dart';
 import '../models/remote_participant.dart';
 import '../models/stream_mode.dart';
 import '../models/token.dart';
@@ -35,9 +36,7 @@ class OpenViduClient {
   /* --------------------------- REMOTE CONNECTIONS --------------------------- */
 
   /// map of SID to RemoteParticipant
-  List<RemoteParticipant> get participants => _participants.values.toList();
-
-  UnmodifiableMapView<String, RemoteParticipant> get participantsIds =>
+  UnmodifiableMapView<String, RemoteParticipant> get participants =>
       UnmodifiableMapView(_participants);
   final _participants = <String, RemoteParticipant>{};
 
@@ -71,7 +70,7 @@ class OpenViduClient {
       if (_rpc == null) return null;
       // ignore: use_build_context_synchronously
       final stream = await _createStream(context);
-      _localParticipant = LocalParticipant.preview(stream);
+      _localParticipant = LocalParticipant.preview(stream, _dispatchEvent);
       return _localParticipant;
     } catch (e) {
       logger.e('[StartPreview] $e');
@@ -111,6 +110,23 @@ class OpenViduClient {
       return _localParticipant;
     } catch (e) {
       throw OtherError();
+    }
+  }
+
+  Future<bool> sendMessage(OvMessage message) async {
+    if (_localParticipant == null || _localParticipant?.stream == null) {
+      return false;
+    }
+    try {
+      await _rpc?.send(
+        "sendMessage",
+        params: {"message": message.toRawJson()},
+        hasResult: true,
+      );
+      return true;
+    } catch (e) {
+      logger.i('SEND MESSAGE', e.toString());
+      return false;
     }
   }
 
@@ -176,6 +192,7 @@ class OpenViduClient {
       id,
       _token,
       _rpc!,
+      _dispatchEvent,
       stream: locaStream,
       mode: _mode,
       videoParams: _videoParams,
@@ -257,7 +274,7 @@ class OpenViduClient {
         ].firstWhere((c) => (c?.id ?? '') == id)?.addIceCandidate(params);
         break;
       case Events.sendMessage:
-        _dispatchEvent(OpenViduEvent.sendMessage, params);
+        _dispatchEvent(OpenViduEvent.reciveMessage, params);
         break;
       case Events.participantJoined:
         _addRemoteConnection(params);
@@ -278,18 +295,37 @@ class OpenViduClient {
         }
         break;
       case Events.participantPublished:
+        final param = params as Map<String, dynamic>;
         final id = params["id"];
-        _dispatchEvent(OpenViduEvent.userPublished, {"id": id});
+
+        final stream =
+            param.containsKey('streams') ? param["streams"][0] : null;
+        _dispatchEvent(OpenViduEvent.userPublished, {
+          "id": id,
+          "audioActive": stream['audioActive'] ?? false,
+          "videoActive": stream['videoActive'] ?? false,
+        });
         break;
       case Events.participantUnpublished:
         final id = params["id"];
-        _dispatchEvent(OpenViduEvent.userPublished, {"id": id});
+        _dispatchEvent(OpenViduEvent.userUnpublished, {"id": id});
         break;
       case Events.streamPropertyChanged:
         final eventStr = params["reason"];
         final id = params["connectionId"];
+        final property = params["property"] as String;
         final value = params["newValue"];
-
+        if (_participants.containsKey(id)) {
+          final remoteParticipant = _participants[id];
+          if (property == 'videoActive') {
+            logger.i(remoteParticipant!.videoActive);
+            remoteParticipant.videoActive = value == 'true';
+            logger.i(remoteParticipant.videoActive);
+          }
+          if (property == 'audioActive') {
+            remoteParticipant!.videoActive = value == 'true';
+          }
+        }
         final event = OpenViduEvent.values.firstWhere((e) {
           return e.toString().split(".")[1] == eventStr;
         });
@@ -306,7 +342,7 @@ class OpenViduClient {
   Future<void> _heartbeat() async {
     try {
       await _rpc?.send(Methods.ping,
-          params: {"interval": 3000}, hasResult: true);
+          params: {"interval": 5000}, hasResult: true);
     } catch (e) {
       _dispatchEvent(OpenViduEvent.error, {"error": NetworkError()});
     }
@@ -329,8 +365,6 @@ class OpenViduClient {
 
   void _dispatchEvent(OpenViduEvent event, Map<String, dynamic> params) {
     if (event == OpenViduEvent.error) _active = false;
-    logger.i(event);
-    logger.i(_handlers.keys);
     if (!_handlers.containsKey(event)) return;
     final handler = _handlers[event];
     if (handler != null) handler(params);

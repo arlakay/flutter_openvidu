@@ -66,12 +66,8 @@ class JsonRpc {
       _channel.stream.listen(
         (event) {
           final response = json.decode(event) as Map<String, dynamic>;
-
-          if (!(response.containsKey('result') &&
-              response['result']['value'] == 'pong')) {
-            _onData(response);
-            _handleResponse(response);
-          }
+          _onData(response);
+          _handleResponse(response);
         },
         onError: _onError,
         onDone: _onDispose,
@@ -123,12 +119,9 @@ class JsonRpc {
     }
   }
 
-  _isPong() {}
-
   /// Handles a decoded response from the server after batches have been
   /// resolved.
   void _handleSingleResponse(response) {
-    logger.i(response);
     if (!_isResponseValid(response)) return;
     var id = response['id'];
     id = (id is String) ? int.parse(id) : id;

@@ -87,7 +87,7 @@ class _ConfigViewState extends State<ConfigView> {
                   top: 80, left: 60, bottom: 30, right: 30),
               child: MediaStreamView(
                 borderRadius: BorderRadius.circular(15),
-                stream: widget.participant.stream,
+                participant: widget.participant,
               ),
             ),
           ),

@@ -2,20 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:openvidu_client/openvidu_client.dart';
 
 import 'future_wrapper.dart';
+import 'no_video.dart';
 
 class MediaStreamView extends StatefulWidget {
   final bool mirror;
-  final MediaStream? stream;
+  final Participant participant;
   final BorderRadiusGeometry? borderRadius;
   final String? userName;
 
   const MediaStreamView({
-    Key? key,
-    this.stream,
+    super.key,
+    required this.participant,
     this.mirror = false,
     this.borderRadius,
     this.userName,
-  }) : super(key: key);
+  });
 
   @override
   State<MediaStreamView> createState() => _MediaStreamViewState();
@@ -23,6 +24,8 @@ class MediaStreamView extends StatefulWidget {
 
 class _MediaStreamViewState extends State<MediaStreamView> {
   late RTCVideoRenderer _render;
+
+  void setOutput() {}
 
   @override
   void initState() {
@@ -32,7 +35,7 @@ class _MediaStreamViewState extends State<MediaStreamView> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.stream == null) {
+    if (widget.participant.stream == null) {
       return Container(
         decoration: BoxDecoration(
           color: Colors.black,
@@ -44,7 +47,7 @@ class _MediaStreamViewState extends State<MediaStreamView> {
       return FutureWrapper(
         future: _render.initialize(),
         builder: (context) {
-          _render.srcObject = widget.stream;
+          _render.srcObject = widget.participant.stream;
           return Container(
             decoration: BoxDecoration(
               color: Colors.black,
@@ -54,11 +57,14 @@ class _MediaStreamViewState extends State<MediaStreamView> {
             clipBehavior: Clip.antiAlias,
             child: Stack(
               children: [
-                RTCVideoView(
-                  _render,
-                  objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
-                  mirror: widget.mirror,
-                ),
+                (widget.participant.videoActive)
+                    ? RTCVideoView(
+                        _render,
+                        objectFit:
+                            RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                        mirror: widget.mirror,
+                      )
+                    : const NoVideoWidget(),
                 if (widget.userName != null && widget.userName?.trim() != '')
                   Container(
                     margin: const EdgeInsets.only(top: 5.0, left: 5.0),

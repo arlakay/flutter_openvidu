@@ -10,6 +10,7 @@ import 'package:openvidu_client_example/app/widgets/config_view.dart';
 import '../models/connection.dart';
 import '../models/session.dart';
 import '../utils/logger.dart';
+import '../widgets/controls.dart';
 import '../widgets/media_stream_view.dart';
 
 class RoomPage extends StatefulWidget {
@@ -29,8 +30,7 @@ class RoomPage extends StatefulWidget {
 }
 
 class _RoomPageState extends State<RoomPage> {
-  List<RemoteParticipant> remoteParticipants = [];
-  List<dynamic> localTrack = [];
+  Map<String, RemoteParticipant> remoteParticipants = {};
   MediaDeviceInfo? input;
   bool isInside = false;
   late OpenViduClient _openvidu;
@@ -56,19 +56,35 @@ class _RoomPageState extends State<RoomPage> {
       await _openvidu.subscribeRemoteStream(params["id"]);
     });
     _openvidu.on(OpenViduEvent.userPublished, (params) {
-      _openvidu.subscribeRemoteStream(params["id"]);
+      _openvidu.subscribeRemoteStream(params["id"],
+          video: params["videoActive"], audio: params["audioActive"]);
     });
 
     _openvidu.on(OpenViduEvent.addStream, (params) {
-      remoteParticipants = [..._openvidu.participants];
-      logger.e(remoteParticipants);
+      remoteParticipants = {..._openvidu.participants};
       setState(() {});
     });
 
     _openvidu.on(OpenViduEvent.removeStream, (params) {
-      setState(() {
-        remoteParticipants = [..._openvidu.participants];
-      });
+      remoteParticipants = {..._openvidu.participants};
+      setState(() {});
+    });
+
+    _openvidu.on(OpenViduEvent.publishVideo, (params) {
+      logger.e(params);
+      remoteParticipants = {..._openvidu.participants};
+      setState(() {});
+    });
+    _openvidu.on(OpenViduEvent.publishAudio, (params) {
+      remoteParticipants = {..._openvidu.participants};
+      setState(() {});
+    });
+    _openvidu.on(OpenViduEvent.updatedLocal, (params) {
+      localParticipant = params['localParticipant'];
+      setState(() {});
+    });
+    _openvidu.on(OpenViduEvent.reciveMessage, (params) {
+      context.showMessageRecivedDialog(params["data"] ?? '');
     });
 
     _openvidu.on(OpenViduEvent.error, (params) {
@@ -119,25 +135,33 @@ class _RoomPageState extends State<RoomPage> {
                     Expanded(
                       child: MediaStreamView(
                         borderRadius: BorderRadius.circular(15),
-                        stream: localParticipant?.stream,
+                        participant: localParticipant!,
                       ),
                     ),
                     SizedBox(
                       height: 100,
                       child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: math.max(0, remoteParticipants.length),
-                        itemBuilder: (BuildContext context, int index) =>
-                            SizedBox(
-                          width: 100,
-                          height: 100,
-                          child: MediaStreamView(
-                            borderRadius: BorderRadius.circular(15),
-                            stream: remoteParticipants[index].stream,
-                          ),
-                        ),
-                      ),
+                          scrollDirection: Axis.horizontal,
+                          itemCount: math.max(0, remoteParticipants.length),
+                          itemBuilder: (BuildContext context, int index) {
+                            final remote =
+                                remoteParticipants.values.elementAt(index);
+                            logger.e(remote);
+                            return SizedBox(
+                              width: 100,
+                              height: 100,
+                              child: MediaStreamView(
+                                borderRadius: BorderRadius.circular(15),
+                                participant: remote,
+                              ),
+                            );
+                          }),
                     ),
+                    if (localParticipant != null)
+                      SafeArea(
+                        top: false,
+                        child: ControlsWidget(_openvidu, localParticipant!),
+                      ),
                   ],
                 ),
       // body: Column(
