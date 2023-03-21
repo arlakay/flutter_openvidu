@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:openvidu_client/openvidu_client.dart';
 
 import '../utils/extensions.dart';
-import '../utils/logger.dart';
 
 class ControlsWidget extends StatefulWidget {
   //
@@ -47,8 +46,6 @@ class _ControlsWidgetState extends State<ControlsWidget> {
         _videoInputs?.firstWhereOrNull((el) => el.deviceId == videoId);
     Hardware.instance.selectedAudioInput = selectedAudioInput;
     Hardware.instance.selectedVideoInput = selectedVideoInput;
-
-    logger.e(participant.stream?.getTracks());
   }
 
   @override
@@ -88,7 +85,6 @@ class _ControlsWidgetState extends State<ControlsWidget> {
   Future<void> _enableAudio() async {
     await participant.publishAudio(true);
     setState(() {});
-    logger.e(participant.audioActive);
   }
 
   void _disableVideo() async {

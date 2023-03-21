@@ -146,7 +146,6 @@ class _RoomPageState extends State<RoomPage> {
                           itemBuilder: (BuildContext context, int index) {
                             final remote =
                                 remoteParticipants.values.elementAt(index);
-                            logger.e(remote);
                             return SizedBox(
                               width: 100,
                               height: 100,
@@ -164,32 +163,6 @@ class _RoomPageState extends State<RoomPage> {
                       ),
                   ],
                 ),
-      // body: Column(
-      //   children: [
-      //     Expanded(
-      //         child: participantTracks.isNotEmpty
-      //             ? ParticipantWidget.widgetFor(participantTracks.first)
-      //             : Container()),
-      //     SizedBox(
-      //       height: 100,
-      //       child: ListView.builder(
-      //         scrollDirection: Axis.horizontal,
-      //         itemCount: math.max(0, participantTracks.length - 1),
-      //         itemBuilder: (BuildContext context, int index) => SizedBox(
-      //           width: 100,
-      //           height: 100,
-      //           child:
-      //               ParticipantWidget.widgetFor(participantTracks[index + 1]),
-      //         ),
-      //       ),
-      //     ),
-      //     if (widget.room.localParticipant != null)
-      //       SafeArea(
-      //         top: false,
-      //         child: ControlsWidget(widget.room, widget.room.localParticipant!),
-      //       ),
-      //   ],
-      // ),
     );
   }
 }

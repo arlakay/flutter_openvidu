@@ -48,6 +48,7 @@ class _MediaStreamViewState extends State<MediaStreamView> {
         future: _render.initialize(),
         builder: (context) {
           _render.srcObject = widget.participant.stream;
+          _render.muted = widget.participant.audioActive;
           return Container(
             decoration: BoxDecoration(
               color: Colors.black,
