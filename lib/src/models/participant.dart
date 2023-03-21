@@ -9,7 +9,7 @@ abstract class Participant {
   late Token token;
   late JsonRpc rpc;
   MediaStream? stream;
-  String streamId = '';
+  String? streamId;
   late Future<RTCPeerConnection> peerConnection;
 
   final Map<String, dynamic> constraints = {
@@ -66,14 +66,17 @@ abstract class Participant {
 
   Future<RTCPeerConnection> _getPeerConnection() async {
     final connection = await createPeerConnection(_getConfiguration(), _config);
-    connection.onIceCandidate = (candidate) {
+    connection.onIceCandidate = (candidate) async {
       Map<String, dynamic> iceCandidateParams = {
         'sdpMid': candidate.sdpMid,
         'sdpMLineIndex': candidate.sdpMLineIndex,
         'candidate': candidate.candidate,
-        "endpointName": id
+        "endpointName": streamId ?? id
       };
-      rpc.send(Methods.onIceCandidate, params: iceCandidateParams);
+      Future.delayed(
+          const Duration(seconds: 1),
+          () async => await rpc.send(Methods.onIceCandidate,
+              params: iceCandidateParams));
     };
 
     connection.onSignalingState = (state) {

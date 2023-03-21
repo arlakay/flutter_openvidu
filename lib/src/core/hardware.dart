@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 class MediaDevice {
   const MediaDevice(this.deviceId, this.label, this.kind);
@@ -32,7 +32,7 @@ class MediaDevice {
 
 class Hardware {
   Hardware._internal() {
-    rtc.navigator.mediaDevices.ondevicechange = _onDeviceChange;
+    navigator.mediaDevices.ondevicechange = _onDeviceChange;
     enumerateDevices().then((devices) {
       selectedAudioInput ??=
           devices.firstWhereOrNull((element) => element.kind == 'audioinput');
@@ -55,7 +55,7 @@ class Hardware {
   MediaDevice? selectedVideoInput;
 
   Future<List<MediaDevice>> enumerateDevices({String? type}) async {
-    var infos = await rtc.navigator.mediaDevices.enumerateDevices();
+    var infos = await navigator.mediaDevices.enumerateDevices();
     var devices =
         infos.map((e) => MediaDevice(e.deviceId, e.label, e.kind!)).toList();
     if (type != null && type.isNotEmpty) {
@@ -77,37 +77,37 @@ class Hardware {
   }
 
   Future<void> selectAudioOutput(MediaDevice device) async {
-    if (rtc.WebRTC.platformIsWeb) {
+    if (WebRTC.platformIsWeb) {
       throw UnimplementedError('selectAudioOutput not support on web');
     }
     selectedAudioOutput = device;
-    await rtc.Helper.selectAudioOutput(device.deviceId);
+    await Helper.selectAudioOutput(device.deviceId);
   }
 
   Future<void> selectAudioInput(MediaDevice device) async {
-    if (rtc.WebRTC.platformIsWeb || rtc.WebRTC.platformIsIOS) {
+    if (WebRTC.platformIsWeb || WebRTC.platformIsIOS) {
       throw UnimplementedError(
           'selectAudioInput is only supported on Android/Windows/macOS');
     }
     selectedAudioInput = device;
-    await rtc.Helper.selectAudioInput(device.deviceId);
+    await Helper.selectAudioInput(device.deviceId);
   }
 
   Future<void> setSpeakerphoneOn(bool enable) async {
-    if (rtc.WebRTC.platformIsMobile) {
-      await rtc.Helper.setSpeakerphoneOn(enable);
+    if (WebRTC.platformIsMobile) {
+      await Helper.setSpeakerphoneOn(enable);
     } else {
       throw UnimplementedError('setSpeakerphoneOn only support on iOS/Android');
     }
   }
 
-  Future<rtc.MediaStream> openCamera(
+  Future<MediaStream> openCamera(
       {MediaDevice? device, bool? facingMode}) async {
     var constraints = <String, dynamic>{
       if (facingMode != null) 'facingMode': facingMode ? 'user' : 'environment',
     };
     if (device != null) {
-      if (rtc.WebRTC.platformIsWeb) {
+      if (WebRTC.platformIsWeb) {
         constraints['deviceId'] = device.deviceId;
       } else {
         constraints['optional'] = [
@@ -116,7 +116,7 @@ class Hardware {
       }
     }
     selectedVideoInput = device;
-    return rtc.navigator.mediaDevices.getUserMedia(<String, dynamic>{
+    return navigator.mediaDevices.getUserMedia(<String, dynamic>{
       'audio': false,
       'video': device != null ? constraints : true,
     });

@@ -61,7 +61,7 @@ class _RoomPageState extends State<RoomPage> {
 
     _openvidu.on(OpenViduEvent.addStream, (params) {
       remoteParticipants = [..._openvidu.participants];
-      logger.d(remoteParticipants);
+      logger.e(remoteParticipants);
       setState(() {});
     });
 

@@ -118,7 +118,7 @@ class OpenViduClient {
       {bool video = true, bool audio = true, bool speakerphone = false}) async {
     if (!_participants.containsKey(id)) return;
     _participants[id]!.subscribeStream(
-      // _localParticipant!.stream!,
+      _localParticipant!.stream!,
       _dispatchEvent,
       video,
       audio,
@@ -130,15 +130,13 @@ class OpenViduClient {
     final id = model["id"];
     if (id == _userId) return;
     model["metadata"] = model["metadata"].replaceAll('}%/%{', ',');
-    String userName = ''; // _getUserName(model);
     final connection =
         RemoteParticipant(id, _token, _rpc!, json.decode(model['metadata']));
     _participants[id] = connection;
-    _dispatchEvent(OpenViduEvent.userJoined, {"id": id, "userName": userName});
+    _dispatchEvent(OpenViduEvent.userJoined, {"id": id});
     logger.d(model["streams"]);
     if (model["streams"] != null) {
-      _dispatchEvent(
-          OpenViduEvent.userPublished, {"id": id, "userName": userName});
+      _dispatchEvent(OpenViduEvent.userPublished, {"id": id});
     }
   }
 
