@@ -82,7 +82,16 @@ class _MediaStreamViewState extends State<MediaStreamView> {
                           .bodyMedium
                           ?.copyWith(color: Colors.white),
                     ),
-                  )
+                  ),
+                if (widget.participant.metadata != null)
+                  Container(
+                    color: Colors.black.withOpacity(0.3),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 7,
+                      horizontal: 10,
+                    ),
+                    child: Text(widget.participant.metadata!["clientData"]),
+                  ),
               ],
             ),
           );

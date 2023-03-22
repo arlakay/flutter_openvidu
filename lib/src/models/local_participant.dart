@@ -37,6 +37,7 @@ class LocalParticipant extends Participant {
     super.id,
     super.token,
     super.rpc,
+    super.metadata,
     EventDispatcher dispatchEvent, {
     required MediaStream stream,
     required StreamMode mode,

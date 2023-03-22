@@ -11,6 +11,7 @@ abstract class Participant {
   MediaStream? stream;
   String? streamId;
   late Future<RTCPeerConnection> peerConnection;
+  Map<String, dynamic>? metadata;
   bool audioActive = false;
   bool videoActive = false;
 
@@ -34,7 +35,7 @@ abstract class Participant {
 
   final List<RTCIceCandidate> _candidateTemps = [];
 
-  Participant(this.id, this.token, this.rpc) {
+  Participant(this.id, this.token, this.rpc, this.metadata) {
     peerConnection = _getPeerConnection();
   }
 

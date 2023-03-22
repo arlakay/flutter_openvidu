@@ -99,12 +99,14 @@ class OpenViduClient {
         turnCredential: response["turnCredential"],
         turnUsername: response["turnUsername"],
       );
-
+      Map<String, dynamic> metadata = {};
+      try {
+        metadata = json.decode(response["metadata"]);
+      } catch (e) {
+        logger.e(e);
+      }
+      _localParticipant = await _createParticipant(response["id"], metadata);
       _dispatchEvent(OpenViduEvent.joinRoom, response);
-
-      _localParticipant = await _createParticipant(
-        response["id"],
-      );
 
       _addAlreadyInRoomConnections(response);
       return _localParticipant;
@@ -186,12 +188,14 @@ class OpenViduClient {
     }
   }
 
-  Future<LocalParticipant> _createParticipant(String id) async {
+  Future<LocalParticipant> _createParticipant(
+      String id, Map<String, dynamic> metadata) async {
     final locaStream = _localParticipant!.stream!;
     return LocalParticipant(
       id,
       _token,
       _rpc!,
+      metadata,
       _dispatchEvent,
       stream: locaStream,
       mode: _mode,

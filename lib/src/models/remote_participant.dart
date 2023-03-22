@@ -6,8 +6,7 @@ import 'openvidu_events.dart';
 import 'participant.dart';
 
 class RemoteParticipant extends Participant {
-  final Map<String, dynamic>? metadata;
-  RemoteParticipant(super.id, super.token, super.rpc, this.metadata);
+  RemoteParticipant(super.id, super.token, super.rpc, super.metadata);
 
   Future<void> subscribeStream(
     MediaStream localStream,
