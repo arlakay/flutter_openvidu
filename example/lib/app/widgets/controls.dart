@@ -36,7 +36,6 @@ class _ControlsWidgetState extends State<ControlsWidget> {
 
   @override
   void initState() {
-    super.initState();
     Hardware.instance.enumerateDevices().then(_loadDevices);
     final audioId = participant.stream?.getVideoTracks().firstOrNull?.id;
     final videoId = participant.stream?.getVideoTracks().firstOrNull?.id;
@@ -46,6 +45,7 @@ class _ControlsWidgetState extends State<ControlsWidget> {
         _videoInputs?.firstWhereOrNull((el) => el.deviceId == videoId);
     Hardware.instance.selectedAudioInput = selectedAudioInput;
     Hardware.instance.selectedVideoInput = selectedVideoInput;
+    super.initState();
   }
 
   @override
@@ -94,11 +94,6 @@ class _ControlsWidgetState extends State<ControlsWidget> {
 
   void _enableVideo() async {
     await participant.publishVideo(true);
-    setState(() {});
-  }
-
-  void _selectAudioOutput(MediaDevice device) async {
-    await Hardware.instance.selectAudioOutput(device);
     setState(() {});
   }
 

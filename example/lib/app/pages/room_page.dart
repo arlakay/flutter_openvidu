@@ -71,7 +71,6 @@ class _RoomPageState extends State<RoomPage> {
     });
 
     _openvidu.on(OpenViduEvent.publishVideo, (params) {
-      logger.e(params);
       remoteParticipants = {..._openvidu.participants};
       setState(() {});
     });
@@ -85,6 +84,10 @@ class _RoomPageState extends State<RoomPage> {
     });
     _openvidu.on(OpenViduEvent.reciveMessage, (params) {
       context.showMessageRecivedDialog(params["data"] ?? '');
+    });
+    _openvidu.on(OpenViduEvent.userUnpublished, (params) {
+      remoteParticipants = {..._openvidu.participants};
+      setState(() {});
     });
 
     _openvidu.on(OpenViduEvent.error, (params) {

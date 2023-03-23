@@ -8,6 +8,7 @@ import '../models/error.dart';
 import '../models/local_participant.dart';
 import '../models/openvidu_events.dart';
 import '../models/ov_message.dart';
+import '../models/participant.dart';
 import '../models/remote_participant.dart';
 import '../models/stream_mode.dart';
 import '../models/token.dart';
@@ -40,8 +41,17 @@ class OpenViduClient {
       UnmodifiableMapView(_participants);
   final _participants = <String, RemoteParticipant>{};
 
+  UnmodifiableMapView<String, Participant> get allConnection {
+    Map<String, Participant> connections = <String, Participant>{};
+    if (_localParticipant != null && _localParticipant?.id != null) {
+      connections[_localParticipant!.id] = _localParticipant!;
+    }
+    connections.addAll(_participants);
+
+    return UnmodifiableMapView(connections);
+  }
+
   OpenViduClient(String serverUrl) {
-    print('INICIA OPENVIDUCLI');
     _token = Token(serverUrl);
   }
 
@@ -92,6 +102,7 @@ class OpenViduClient {
     try {
       final response = await _joinRoom({"clientData": userName, ...?extraData});
       _userId = response["id"];
+      logger.e(response);
 
       _token.appendInfo(
         role: response["role"],
@@ -106,11 +117,12 @@ class OpenViduClient {
         logger.e(e);
       }
       _localParticipant = await _createParticipant(response["id"], metadata);
+      _addAlreadyInRoomConnections(response);
       _dispatchEvent(OpenViduEvent.joinRoom, response);
 
-      _addAlreadyInRoomConnections(response);
       return _localParticipant;
     } catch (e) {
+      logger.e(e);
       throw OtherError();
     }
   }
@@ -144,17 +156,27 @@ class OpenViduClient {
     );
   }
 
-  void _addRemoteConnection(Map<String, dynamic> model) {
+  Future<void> _addRemoteConnection(Map<String, dynamic> model) async {
     final id = model["id"];
     if (id == _userId) return;
-    model["metadata"] = model["metadata"].replaceAll('}%/%{', ',');
-    final connection =
-        RemoteParticipant(id, _token, _rpc!, json.decode(model['metadata']));
+    Map<String, dynamic> metadata = {};
+    try {
+      metadata = json.decode(model["metadata"]);
+    } catch (e) {
+      logger.e(e);
+    }
+    final connection = await _createRemoteParticipant(id, metadata);
     _participants[id] = connection;
-    _dispatchEvent(OpenViduEvent.userJoined, {"id": id});
+    // _dispatchEvent(OpenViduEvent.userJoined, {"id": id});
     logger.d(model["streams"]);
     if (model["streams"] != null) {
-      _dispatchEvent(OpenViduEvent.userPublished, {"id": id});
+      final stream = model.containsKey('streams') ? model["streams"][0] : null;
+      logger.e(stream);
+      _dispatchEvent(OpenViduEvent.userPublished, {
+        "id": id,
+        "audioActive": stream['audioActive'] ?? false,
+        "videoActive": stream['videoActive'] ?? false,
+      });
     }
   }
 
@@ -186,6 +208,16 @@ class OpenViduClient {
       if (e is Map && e['code'] == 401) throw TokenError();
       throw OtherError();
     }
+  }
+
+  Future<RemoteParticipant> _createRemoteParticipant(
+      String id, Map<String, dynamic> metadata) async {
+    return RemoteParticipant(
+      id,
+      _token,
+      _rpc!,
+      metadata,
+    );
   }
 
   Future<LocalParticipant> _createParticipant(
@@ -262,10 +294,10 @@ class OpenViduClient {
     _handlers = {..._handlers, event: handler};
   }
 
-  void _onRpcMessage(Map<String, dynamic> message) {
+  Future<void> _onRpcMessage(Map<String, dynamic> message) async {
     if (!_active) return;
     if (!message.containsKey("method")) return;
-    logger.i(message);
+
     final method = message["method"];
     final params = message["params"];
 
@@ -278,12 +310,15 @@ class OpenViduClient {
         ].firstWhere((c) => (c?.id ?? '') == id)?.addIceCandidate(params);
         break;
       case Events.sendMessage:
+        logger.i(message);
         _dispatchEvent(OpenViduEvent.reciveMessage, params);
         break;
       case Events.participantJoined:
-        _addRemoteConnection(params);
+        logger.i(message);
+        await _addRemoteConnection(params);
         break;
       case Events.participantLeft:
+        logger.i(message);
         final id = params["connectionId"];
 
         if (_participants.containsKey(id)) {
@@ -299,6 +334,7 @@ class OpenViduClient {
         }
         break;
       case Events.participantPublished:
+        logger.i(message);
         final param = params as Map<String, dynamic>;
         final id = params["id"];
 
@@ -311,10 +347,12 @@ class OpenViduClient {
         });
         break;
       case Events.participantUnpublished:
+        logger.i(message);
         final id = params["id"];
         _dispatchEvent(OpenViduEvent.userUnpublished, {"id": id});
         break;
       case Events.streamPropertyChanged:
+        logger.i(message);
         final eventStr = params["reason"];
         final id = params["connectionId"];
         final property = params["property"] as String;

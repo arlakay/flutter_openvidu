@@ -1,5 +1,4 @@
-import 'package:flutter_webrtc/flutter_webrtc.dart';
-
+import '../../openvidu_client.dart';
 import '../support/json_rpc.dart';
 import '../utils/constants.dart';
 import 'token.dart';
@@ -69,6 +68,7 @@ abstract class Participant {
 
   Future<RTCPeerConnection> _getPeerConnection() async {
     final connection = await createPeerConnection(_getConfiguration(), _config);
+
     connection.onIceCandidate = (candidate) async {
       Map<String, dynamic> iceCandidateParams = {
         'sdpMid': candidate.sdpMid,

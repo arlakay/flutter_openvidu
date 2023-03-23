@@ -18,4 +18,5 @@ enum OpenViduEvent {
   videoTrack,
   videoDimensions,
   reciveMessage,
+  trackReplaced,
 }

@@ -74,7 +74,11 @@ class _ConfigViewState extends State<ConfigView> {
     }
   }
 
-  void _connect(BuildContext context) {}
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
