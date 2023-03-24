@@ -97,7 +97,7 @@ It changes the stream mode from camera to screen and vice versa.
 
 Replace the track with the new track by deviceId
 
-### selectVideoInput
+### setVideoInput
 
 Switches the camera to the deviceId passed in
 
