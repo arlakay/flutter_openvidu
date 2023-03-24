@@ -23,7 +23,6 @@ class RemoteParticipant extends Participant {
         this.stream = stream;
         audioActive = audio;
         videoActive = video;
-        logger.e(metadata);
         dispatchEvent(OpenViduEvent.addStream,
             {"id": id, "stream": stream, "metadata": metadata});
       };

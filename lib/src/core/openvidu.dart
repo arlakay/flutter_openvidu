@@ -125,7 +125,6 @@ class OpenViduClient {
     try {
       final response = await _joinRoom({"clientData": userName, ...?extraData});
       _userId = response["id"];
-      logger.e(response);
 
       _token.appendInfo(
         role: response["role"],
@@ -216,7 +215,6 @@ class OpenViduClient {
     logger.d(model["streams"]);
     if (model["streams"] != null) {
       final stream = model.containsKey('streams') ? model["streams"][0] : null;
-      logger.e(stream);
       _dispatchEvent(OpenViduEvent.userPublished, {
         "id": id,
         "audioActive": stream['audioActive'] ?? false,

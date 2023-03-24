@@ -1,7 +1,8 @@
 name: openvidu_client
-description: OpenVidu Flutter client.
+description: OpenVidu Flutter client for real time audio and video meetings.
 version: 0.0.1
-# homepage:
+author: Luis Nunez
+homepage: https://github.com/LuisNunez88/flutter_openvidu_client
 
 environment:
   sdk: '>=2.19.3 <3.0.0'
