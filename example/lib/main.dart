@@ -8,6 +8,7 @@ import 'theme/theme.dart';
 
 void main() {
   HttpOverrides.global = GlobalHttpOverrides();
+  WidgetsFlutterBinding.ensureInitialized();
 
   runApp(const App());
 }
