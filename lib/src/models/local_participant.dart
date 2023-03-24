@@ -187,6 +187,13 @@ class LocalParticipant extends Participant {
     }
   }
 
+  /// It changes the stream mode from camera to screen and vice versa.
+  ///
+  /// Args:
+  ///   context (BuildContext): The context of the current screen.
+  ///
+  /// Returns:
+  ///   A Future<void>
   Future<void> shareScreen(BuildContext context) async {
     try {
       if (stream == null) return;
@@ -200,6 +207,11 @@ class LocalParticipant extends Participant {
     }
   }
 
+  /// It gets the current peer connection, gets the senders, and then loops through the senders to find the audio sender and
+  /// replace the track with the new track
+  ///
+  /// Args:
+  ///   deviceId (String): The device id of the audio input device.
   Future<void> setAudioInput(String deviceId) async {
     final connection = await peerConnection;
     final senders = await connection.senders;
@@ -211,12 +223,24 @@ class LocalParticipant extends Participant {
     }
   }
 
-  Future<void> selectVideoInput(String deviceId) async {
+  /// It gets the first video track from the stream, and then switches the camera to the deviceId passed in
+  ///
+  /// Args:
+  ///   deviceId (String): The device id of the camera you want to switch to.
+  ///
+  /// Returns:
+  ///   A Future<void>
+  Future<void> setVideoInput(String deviceId) async {
     final track = stream?.getVideoTracks().firstOrNull;
     if (track == null) return;
     await Helper.switchCamera(track, deviceId, stream);
   }
 
+  /// > If the stream is not null, get the list of cameras, get the first video track, get the new track, and switch the
+  /// camera
+  ///
+  /// Returns:
+  ///   A Future<void>
   void switchCamera() async {
     if (stream == null) return;
     final devices = await Helper.cameras;
@@ -227,6 +251,10 @@ class LocalParticipant extends Participant {
     Helper.switchCamera(track, newTrack.deviceId, stream);
   }
 
+  /// It disables all the tracks of the local stream and dispatches an event to notify the change
+  ///
+  /// Returns:
+  ///   A Future<void>
   Future<void> unpublishAllTracks() async {
     if (stream == null) return;
     stream!.getTracks().forEach((MediaStreamTrack e) => e.enabled = false);
@@ -239,6 +267,14 @@ class LocalParticipant extends Participant {
     await _streamPropertyChanged("audioActive", audioActive, "publishAudio");
   }
 
+  /// It enables or disables the video track of the local stream, and then it sends a request to the OpenVidu Server to
+  /// update the stream property
+  ///
+  /// Args:
+  ///   enable (bool): true to enable the video, false to disable it
+  ///
+  /// Returns:
+  ///   A Future<void>
   Future<void> publishVideo(bool enable) async {
     if (stream == null) return;
     stream!
@@ -251,6 +287,14 @@ class LocalParticipant extends Participant {
     await _streamPropertyChanged("videoActive", videoActive, "publishVideo");
   }
 
+  /// If the stream is not null, then enable or disable the audio track of the stream, depending on the value of the enable
+  /// parameter
+  ///
+  /// Args:
+  ///   enable (bool): boolean
+  ///
+  /// Returns:
+  ///   A Future<void>
   Future<void> publishAudio(bool enable) async {
     if (stream == null) return;
     stream!.getAudioTracks().forEach((e) => e.enabled = enable);

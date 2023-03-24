@@ -51,10 +51,23 @@ class OpenViduClient {
     return UnmodifiableMapView(connections);
   }
 
+  /// It creates a new instance of the Token class.
+  ///
+  /// Args:
+  ///   serverUrl (String): The URL of the OpenVidu Server.
   OpenViduClient(String serverUrl) {
     _token = Token(serverUrl);
   }
 
+  /// > Start the local preview, and return the local participant
+  ///
+  /// Args:
+  ///   context (BuildContext): The context of the current page.
+  ///   mode (StreamMode): StreamMode.audioAndVideo,
+  ///   videoParams (VideoParams): Video parameters, including resolution, frame rate, and bit rate. Defaults to VideoParams
+  ///
+  /// Returns:
+  ///   A Future<LocalParticipant?>
   Future<LocalParticipant?> startLocalPreview(
       BuildContext context, StreamMode mode,
       {VideoParams? videoParams = VideoParams.middle}) async {
@@ -88,8 +101,18 @@ class OpenViduClient {
     }
   }
 
+  /// Stop the local preview
   Future<void> stopLocalPreview() async => disconnect();
 
+  /// It creates a local participant, joins the room, and returns the local participant
+  ///
+  /// Args:
+  ///   token (String): The token you get from the server.
+  ///   userName (String): The name of the user who is publishing the stream.
+  ///   extraData (Map<String, dynamic>): Extra data to be sent to the server.
+  ///
+  /// Returns:
+  ///   The local participant.
   Future<LocalParticipant?> publishLocalStream({
     required String token,
     required String userName,
@@ -127,6 +150,13 @@ class OpenViduClient {
     }
   }
 
+  /// It sends a message to the server.
+  ///
+  /// Args:
+  ///   message (OvMessage): The message to be sent.
+  ///
+  /// Returns:
+  ///   A Future<bool>
   Future<bool> sendMessage(OvMessage message) async {
     if (_localParticipant == null || _localParticipant?.stream == null) {
       return false;
@@ -144,6 +174,21 @@ class OpenViduClient {
     }
   }
 
+  /// "Subscribe to the remote participant's stream."
+  ///
+  /// The first parameter is the id of the remote participant. The second parameter is a boolean value that indicates
+  /// whether the video should be subscribed to. The third parameter is a boolean value that indicates whether the audio
+  /// should be subscribed to. The fourth parameter is a boolean value that indicates whether the speakerphone should be
+  /// enabled
+  ///
+  /// Args:
+  ///   id (String): The id of the participant you want to subscribe to.
+  ///   video (bool): Whether to subscribe to the video stream. Defaults to true
+  ///   audio (bool): Whether to subscribe to the audio stream. Defaults to true
+  ///   speakerphone (bool): If true, the audio will be played through the speakerphone. Defaults to false
+  ///
+  /// Returns:
+  ///   A Future<void>
   Future<void> subscribeRemoteStream(String id,
       {bool video = true, bool audio = true, bool speakerphone = false}) async {
     if (!_participants.containsKey(id)) return;
@@ -290,6 +335,11 @@ class OpenViduClient {
 
   /* ----------------------------- SOCKET MANAGER ----------------------------- */
 
+  /// > It takes an event and a handler function as parameters and adds them to the _handlers map
+  ///
+  /// Args:
+  ///   event (OpenViduEvent): The event to listen for.
+  ///   handler (Function(Map<String, dynamic> params)): The function that will be called when the event is triggered.
   void on(OpenViduEvent event, Function(Map<String, dynamic> params) handler) {
     _handlers = {..._handlers, event: handler};
   }

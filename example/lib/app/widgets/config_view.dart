@@ -68,7 +68,7 @@ class _ConfigViewState extends State<ConfigView> {
   void _selectVideoInput(MediaDevice? device) async {
     if (device == null) return;
     if (selectedVideoInput?.deviceId != device.deviceId) {
-      widget.participant.selectVideoInput(device.deviceId);
+      widget.participant.setVideoInput(device.deviceId);
       selectedVideoInput = device;
       setState(() {});
     }
