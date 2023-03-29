@@ -66,6 +66,8 @@ class LocalParticipant extends Participant {
     _publishLocalStream();
   }
 
+  StreamMode get mode => _mode;
+
   Future<void> _publishLocalStream() async {
     if (stream == null || _published == true) return;
     try {
@@ -111,11 +113,17 @@ class LocalParticipant extends Participant {
     }
   }
 
+  Future<void> _stopStream() async {
+    if (stream != null) {
+      stream!.getTracks().forEach((track) async {
+        await track.stop();
+      });
+      await stream!.dispose();
+      stream = null;
+    }
+  }
+
   Future<void> _changeToCam() async {
-    final width =
-        (WebRTC.platformIsDesktop || WebRTC.platformIsWeb) ? '1280' : '640';
-    final height =
-        (WebRTC.platformIsDesktop || WebRTC.platformIsWeb) ? '720' : '480';
     stream?.getVideoTracks()[0].stop();
     final mediaConstraints = <String, dynamic>{
       'audio': true,
@@ -126,17 +134,17 @@ class LocalParticipant extends Participant {
         },
       }
     };
-    final display = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+    await _stopStream();
+    stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
     _mode = StreamMode.frontCamera;
     final connection = await peerConnection;
     final senders = await connection.senders;
 
     for (var sender in senders) {
       if (sender.track!.kind == 'video') {
-        sender.replaceTrack(display.getVideoTracks()[0]);
+        sender.replaceTrack(stream!.getVideoTracks()[0]);
       }
     }
-    stream = display;
     _dispatchEvent(
         OpenViduEvent.updatedLocal, {'mode': _mode, 'localParticipant': this});
   }
@@ -147,14 +155,14 @@ class LocalParticipant extends Participant {
         'audio': false,
         'video': true,
       };
-      late MediaStream screen;
+      await _stopStream();
       if (WebRTC.platformIsDesktop) {
         // ignore: use_build_context_synchronously
         final source = await showDialog<DesktopCapturerSource>(
           context: context,
           builder: (context) => ScreenSelectDialog(),
         );
-        screen = await navigator.mediaDevices.getDisplayMedia(<String, dynamic>{
+        stream = await navigator.mediaDevices.getDisplayMedia(<String, dynamic>{
           'video': source == null
               ? true
               : {
@@ -163,7 +171,7 @@ class LocalParticipant extends Participant {
                 }
         });
       } else {
-        screen = await navigator.mediaDevices.getDisplayMedia(mediaConstraints);
+        stream = await navigator.mediaDevices.getDisplayMedia(mediaConstraints);
       }
 
       final connection = await peerConnection;
@@ -171,15 +179,15 @@ class LocalParticipant extends Participant {
 
       for (var sender in senders) {
         if (sender.track!.kind == 'video') {
-          sender.replaceTrack(screen.getVideoTracks()[0]);
+          sender.replaceTrack(stream?.getVideoTracks()[0]);
         }
       }
+
       _mode = StreamMode.screen;
-      screen.getVideoTracks()[0].onEnded = () async {
+      stream?.getVideoTracks()[0].onEnded = () async {
         await _changeToCam();
       };
 
-      stream = screen;
       _dispatchEvent(OpenViduEvent.updatedLocal,
           {'mode': _mode, 'localParticipant': this});
     } catch (e) {

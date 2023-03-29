@@ -65,6 +65,7 @@ class JsonRpc {
       isActive = true;
       _channel.stream.listen(
         (event) {
+          event = event.toString().replaceAll('}%/%{', ',');
           final response = json.decode(event) as Map<String, dynamic>;
           _onData(response);
           _handleResponse(response);

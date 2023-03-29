@@ -34,21 +34,6 @@ class RemoteParticipant extends Participant {
       };
 
       await connection.addStream(localStream);
-
-      // final offer = await connection.createOffer(_remoteConstraints);
-
-      // await connection.addStream(localStream);
-      // await connection.setLocalDescription(offer);
-
-      // var result = await rpc.send(
-      //   Methods.receiveVideoFrom,
-      //   params: {'sender': id, 'sdpOffer': offer.sdp},
-      //   hasResult: true,
-      // );
-      // logger.d(result);
-
-      // final answer = RTCSessionDescription(result['sdpAnswer'], 'answer');
-      // await connection.setRemoteDescription(answer);
     } catch (e) {
       logger.e(e);
     }
