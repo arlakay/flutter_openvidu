@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import '../../theme/theme.dart';
 
 class NoVideoWidget extends StatelessWidget {
-  //
   const NoVideoWidget({Key? key}) : super(key: key);
 
   @override

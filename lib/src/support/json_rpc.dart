@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 // import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../models/error_code.dart' as error_code;
@@ -58,10 +62,41 @@ class JsonRpc {
     _onDispose = onDispose;
   }
 
+  Future<String?> loadSSLOpenVidu() async {
+    try {
+      final extDir = await getApplicationDocumentsDirectory();
+      final dirPath = '${extDir.path}/Bebas/OpenVidu/cert';
+      await Directory(dirPath).create(recursive: true);
+      final filePath = '$dirPath/${DateTime.now().millisecondsSinceEpoch.toString()}.pem';
+
+      final byteData = await rootBundle.load('assets/ssl/vidudev_bankmas_net.pem');
+      final file = File(filePath);
+      await file.writeAsBytes(byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
+
+      return filePath;
+    } catch (e) {
+      logger.d('FAILED TO LOAD VIDU SSL: $e');
+      return null;
+    }
+  }
+
   connect(String url) async {
     logger.d(url);
     try {
+      // final pemFilePath = await loadSSLOpenVidu();
+      // final pemFile = File(pemFilePath ?? '');
+
+      // final securityContext = SecurityContext();
+      // if (pemFile.existsSync()) {
+      //   securityContext.setTrustedCertificatesBytes(pemFile.readAsBytesSync());
+      // }
+
       _channel = WebSocketChannel.connect(Uri.parse(url));
+      // _channel = IOWebSocketChannel.connect(
+      //   Uri.parse(url),
+      //   // customClient: HttpClient(context: securityContext),
+      // );
+
       isActive = true;
       _channel.stream.listen(
         (event) {
@@ -171,11 +206,9 @@ class RpcException implements Exception {
   final Object? data;
 
   RpcException(this.code, this.message, {this.data});
-  RpcException.methodNotFound(String methodName)
-      : this(error_code.METHOD_NOT_FOUND, 'Unknown method "$methodName".');
+  RpcException.methodNotFound(String methodName) : this(error_code.METHOD_NOT_FOUND, 'Unknown method "$methodName".');
 
-  RpcException.invalidParams(String message)
-      : this(error_code.INVALID_PARAMS, message);
+  RpcException.invalidParams(String message) : this(error_code.INVALID_PARAMS, message);
 
   Map<String, dynamic> serialize(request) {
     dynamic modifiedData;

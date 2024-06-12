@@ -211,7 +211,7 @@ class OpenViduClient {
     }
     final connection = await _createRemoteParticipant(id, metadata);
     _participants[id] = connection;
-    // _dispatchEvent(OpenViduEvent.userJoined, {"id": id});
+    _dispatchEvent(OpenViduEvent.userJoined, {"id": id});
     logger.d(model["streams"]);
     if (model["streams"] != null) {
       final stream = model.containsKey('streams') ? model["streams"][0] : null;
@@ -369,11 +369,15 @@ class OpenViduClient {
         logger.i(message);
         final id = params["connectionId"];
 
+        logger.i(_participants.entries.toString());
+
+        
         if (_participants.containsKey(id)) {
           try {
             var connection = _participants[id];
             connection?.close();
             _participants.remove(id);
+            disconnect();
           } catch (e) {
             logger.w(e);
           }
@@ -413,7 +417,7 @@ class OpenViduClient {
             logger.i(remoteParticipant.videoActive);
           }
           if (property == 'audioActive') {
-            remoteParticipant!.videoActive = value == 'true';
+            remoteParticipant!.audioActive = value == 'true';
           }
         }
         final event = OpenViduEvent.values.firstWhere((e) {

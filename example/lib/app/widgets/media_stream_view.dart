@@ -40,7 +40,7 @@ class _MediaStreamViewState extends State<MediaStreamView> {
         decoration: BoxDecoration(
           color: Colors.black,
           borderRadius: widget.borderRadius,
-          border: Border.all(color: Colors.grey),
+          // border: Border.all(color: const Color(0xFFE6E6E6)),
         ),
       );
     } else {
@@ -52,7 +52,7 @@ class _MediaStreamViewState extends State<MediaStreamView> {
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: widget.borderRadius,
-              border: Border.all(color: Colors.grey),
+              // border: Border.all(color: const Color(0xFFE6E6E6)),
             ),
             clipBehavior: Clip.antiAlias,
             child: Stack(
@@ -60,37 +60,36 @@ class _MediaStreamViewState extends State<MediaStreamView> {
                 (widget.participant.videoActive)
                     ? RTCVideoView(
                         _render,
-                        objectFit:
-                            RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                        objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
                         mirror: widget.mirror,
                       )
                     : const NoVideoWidget(),
-                if (widget.userName != null && widget.userName?.trim() != '')
-                  Container(
-                    margin: const EdgeInsets.only(top: 5.0, left: 5.0),
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 2.0, horizontal: 8.0),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: Text(
-                      widget.userName ?? '',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: Colors.white),
-                    ),
-                  ),
-                if (widget.participant.metadata != null)
-                  Container(
-                    color: Colors.black.withOpacity(0.3),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 7,
-                      horizontal: 10,
-                    ),
-                    child: Text(widget.participant.metadata!["clientData"]),
-                  ),
+                // if (widget.userName != null && widget.userName?.trim() != '')
+                //   Container(
+                //     margin: const EdgeInsets.only(top: 5.0, left: 5.0),
+                //     padding: const EdgeInsets.symmetric(
+                //         vertical: 2.0, horizontal: 8.0),
+                //     decoration: BoxDecoration(
+                //       color: Colors.black54,
+                //       borderRadius: BorderRadius.circular(15),
+                //     ),
+                //     child: Text(
+                //       widget.userName ?? '',
+                //       style: Theme.of(context)
+                //           .textTheme
+                //           .bodyMedium
+                //           ?.copyWith(color: Colors.white),
+                //     ),
+                //   ),
+                // if (widget.participant.metadata != null)
+                //   Container(
+                //     color: Colors.black.withOpacity(0.3),
+                //     padding: const EdgeInsets.symmetric(
+                //       vertical: 7,
+                //       horizontal: 10,
+                //     ),
+                //     child: Text(widget.participant.metadata!["clientData"]),
+                //   ),
               ],
             ),
           );
