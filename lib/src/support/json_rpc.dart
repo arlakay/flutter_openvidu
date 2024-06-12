@@ -83,19 +83,19 @@ class JsonRpc {
   connect(String url) async {
     logger.d(url);
     try {
-      // final pemFilePath = await loadSSLOpenVidu();
-      // final pemFile = File(pemFilePath ?? '');
+      final pemFilePath = await loadSSLOpenVidu();
+      final pemFile = File(pemFilePath ?? '');
 
-      // final securityContext = SecurityContext();
-      // if (pemFile.existsSync()) {
-      //   securityContext.setTrustedCertificatesBytes(pemFile.readAsBytesSync());
-      // }
+      final securityContext = SecurityContext();
+      if (pemFile.existsSync()) {
+        securityContext.setTrustedCertificatesBytes(pemFile.readAsBytesSync());
+      }
 
-      _channel = WebSocketChannel.connect(Uri.parse(url));
-      // _channel = IOWebSocketChannel.connect(
-      //   Uri.parse(url),
-      //   // customClient: HttpClient(context: securityContext),
-      // );
+      // _channel = WebSocketChannel.connect(Uri.parse(url));
+      _channel = IOWebSocketChannel.connect(
+        Uri.parse(url),
+        // customClient: HttpClient(context: securityContext),
+      );
 
       isActive = true;
       _channel.stream.listen(

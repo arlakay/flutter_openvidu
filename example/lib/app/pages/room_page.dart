@@ -38,12 +38,16 @@ class _RoomPageState extends State<RoomPage> {
   @override
   void initState() {
     super.initState();
+    if (!isInside) {
+      _onConnect();
+    }
+
     initOpenVidu();
     _listenSessionEvents();
   }
 
   Future<void> initOpenVidu() async {
-    _openvidu = OpenViduClient('https://vidudev.bankmas.net/openvidu');
+    _openvidu = OpenViduClient('${widget.serverUrl}/openvidu');
     localParticipant = await _openvidu.startLocalPreview(context, StreamMode.frontCamera);
     setState(() {});
   }
@@ -129,13 +133,15 @@ class _RoomPageState extends State<RoomPage> {
     return Scaffold(
       body: localParticipant == null
           ? Container()
-          : !isInside
-              ? ConfigView(
-                  participant: localParticipant!,
-                  onConnect: _onConnect,
-                  userName: widget.userName,
-                )
-              : Column(
+          : 
+          // !isInside
+          //     ? ConfigView(
+          //         participant: localParticipant!,
+          //         onConnect: _onConnect,
+          //         userName: widget.userName,
+          //       )
+          //     : 
+              Column(
                   children: [
                     SizedBox(
                       width: MediaQuery.of(context).size.width,
