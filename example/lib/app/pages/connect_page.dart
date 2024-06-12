@@ -65,29 +65,29 @@ class _ConnectPageState extends State<ConnectPage> {
     final nav = Navigator.of(ctx);
 
     try {
-      var response = await _dio.post(
-        '/sessions',
-        data: {
-          "mediaMode": "ROUTED",
-          "recordingMode": "MANUAL",
-          "customSessionId": _textSessionController.text,
-          "forcedVideoCodec": "VP8",
-          "allowTranscoding": false
-        },
-      );
-      final statusCode = response.statusCode ?? 400;
-      if (statusCode >= 200 && statusCode < 300) {
+      // var response = await _dio.post(
+      //   '/sessions',
+      //   data: {
+      //     "mediaMode": "ROUTED",
+      //     "recordingMode": "MANUAL",
+      //     "customSessionId": _textSessionController.text,
+      //     "forcedVideoCodec": "VP8",
+      //     "allowTranscoding": false
+      //   },
+      // );
+      // final statusCode = response.statusCode ?? 400;
+      // if (statusCode >= 200 && statusCode < 500) {
         var response2 = await _dio.post(
           '/sessions/${_textSessionController.text}/connection',
           data: {
             "type": "WEBRTC",
             "data": "My Server Data",
-            "record": true,
+            "record": false,
             "role": "PUBLISHER",
           },
         );
         final statusCode2 = response2.statusCode ?? 400;
-        if (statusCode2 >= 200 && statusCode2 < 300) {
+        if (statusCode2 >= 200 && statusCode2 < 500) {
           logger.i(response2.data);
           final connection = Session.fromJson(response2.data);
           await nav.push(
@@ -100,19 +100,20 @@ class _ConnectPageState extends State<ConnectPage> {
                     )),
           );
         }
-      }
-    } catch (e) {
-      logger.e(e);
+      // }
+    } catch (e,s) {
+      logger.e('$e, ${s.toString()}');
     }
   }
 
   @override
   void initState() {
     super.initState();
-    _textSessionController.text = 'Session${Random().nextInt(1000)}';
-    _textUserNameController.text = 'Participante${Random().nextInt(1000)}';
-    _textUrlController.text = 'demos.openvidu.io';
-    _textSecretController.text = 'MY_SECRET';
+    // _textSessionController.text = 'Session${Random().nextInt(1000)}';
+    _textSessionController.text = '202405140000033b72c76c-07f6-4e94-b1c8-df3cf3d8dd32';
+    _textUserNameController.text = 'Participant${Random().nextInt(1000)}';
+    _textUrlController.text = 'vidudev.bankmas.net';
+    _textSecretController.text = 'QkFOS01BUzIwMjIK';
     _textPortController.text = '443';
     _textIceServersController.text = 'stun.l.google.com:19302';
     _readPrefs();

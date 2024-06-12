@@ -145,8 +145,7 @@ class LocalParticipant extends Participant {
         sender.replaceTrack(stream!.getVideoTracks()[0]);
       }
     }
-    _dispatchEvent(
-        OpenViduEvent.updatedLocal, {'mode': _mode, 'localParticipant': this});
+    _dispatchEvent(OpenViduEvent.updatedLocal, {'mode': _mode, 'localParticipant': this});
   }
 
   Future<void> _changeToScreen(BuildContext context) async {
@@ -188,8 +187,7 @@ class LocalParticipant extends Participant {
         await _changeToCam();
       };
 
-      _dispatchEvent(OpenViduEvent.updatedLocal,
-          {'mode': _mode, 'localParticipant': this});
+      _dispatchEvent(OpenViduEvent.updatedLocal, {'mode': _mode, 'localParticipant': this});
     } catch (e) {
       logger.e(e);
     }
@@ -268,8 +266,7 @@ class LocalParticipant extends Participant {
     stream!.getTracks().forEach((MediaStreamTrack e) => e.enabled = false);
     videoActive = false;
     audioActive = false;
-    _dispatchEvent(
-        OpenViduEvent.updatedLocal, {'mode': _mode, 'localParticipant': this});
+    _dispatchEvent(OpenViduEvent.updatedLocal, {'mode': _mode, 'localParticipant': this});
     if (!_published) return;
     await _streamPropertyChanged("videoActive", videoActive, "publishVideo");
     await _streamPropertyChanged("audioActive", audioActive, "publishAudio");
@@ -285,12 +282,9 @@ class LocalParticipant extends Participant {
   ///   A Future<void>
   Future<void> publishVideo(bool enable) async {
     if (stream == null) return;
-    stream!
-        .getVideoTracks()
-        .forEach((MediaStreamTrack e) => e.enabled = enable);
+    stream!.getVideoTracks().forEach((MediaStreamTrack e) => e.enabled = enable);
     videoActive = enable;
-    _dispatchEvent(
-        OpenViduEvent.updatedLocal, {'mode': _mode, 'localParticipant': this});
+    _dispatchEvent(OpenViduEvent.updatedLocal, {'mode': _mode, 'localParticipant': this});
     if (!_published) return;
     await _streamPropertyChanged("videoActive", videoActive, "publishVideo");
   }
@@ -306,9 +300,9 @@ class LocalParticipant extends Participant {
   Future<void> publishAudio(bool enable) async {
     if (stream == null) return;
     stream!.getAudioTracks().forEach((e) => e.enabled = enable);
+    // stream!.getAudioTracks().forEach((e) => e.muted = enable);
     audioActive = enable;
-    _dispatchEvent(
-        OpenViduEvent.updatedLocal, {'mode': _mode, 'localParticipant': this});
+    _dispatchEvent(OpenViduEvent.updatedLocal, {'mode': _mode, 'localParticipant': this});
     if (!_published) return;
     await _streamPropertyChanged("audioActive", audioActive, "publishAudio");
   }
