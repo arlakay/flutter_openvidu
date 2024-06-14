@@ -1,11 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:openvidu_client/openvidu_client.dart';
 import 'package:openvidu_client_example/app/utils/extensions.dart';
-import 'package:openvidu_client_example/app/widgets/config_view.dart';
 import 'package:openvidu_client_example/app/widgets/controls.dart';
 import 'package:openvidu_client_example/app/widgets/media_stream_view.dart';
 
@@ -35,19 +36,45 @@ class _RoomPageState extends State<RoomPage> {
 
   bool isCenteredLocalParticipantCamera = true;
 
+  List<MediaDevice>? _audioInputs;
+  List<MediaDevice>? _audioOutputs;
+  List<MediaDevice>? _videoInputs;
+  MediaDevice? selectedAudioInput;
+  MediaDevice? selectedVideoInput;
+
+  StreamSubscription? _subscription;
+
   @override
   void initState() {
     super.initState();
-    if (!isInside) {
-      _onConnect();
-    }
+
+    _subscription = Hardware.instance.onDeviceChange.stream.listen((List<MediaDevice> devices) {
+      _loadDevices(devices);
+    });
+    Hardware.instance.enumerateDevices().then(_loadDevices);
 
     initOpenVidu();
     _listenSessionEvents();
+
+    if (!isInside) {
+      _onConnect();
+    }
+  }
+
+  void _loadDevices(List<MediaDevice> devices) async {
+    _audioInputs = devices.where((d) => d.kind == 'audioinput').toList();
+    _audioOutputs = devices.where((d) => d.kind == 'audiooutput').toList();
+    _videoInputs = devices.where((d) => d.kind == 'videoinput').toList();
+    logger.d('cek video input = $_videoInputs');
+    selectedAudioInput = _audioInputs?.first;
+    selectedVideoInput = _videoInputs?.singleWhere((element) => element.label.contains('front'));
+    setState(() {});
   }
 
   Future<void> initOpenVidu() async {
-    _openvidu = OpenViduClient('${widget.serverUrl}/openvidu');
+    final securityContext = SecurityContext();
+
+    _openvidu = OpenViduClient('${widget.serverUrl}/openvidu', securityContext);
     localParticipant = await _openvidu.startLocalPreview(context, StreamMode.frontCamera);
     setState(() {});
   }
@@ -111,7 +138,7 @@ class _RoomPageState extends State<RoomPage> {
     try {
       var response = await dio.post(
         '/sessions/${widget.room.sessionId}/connection',
-        data: {"type": widget.room.type, "role": "PUBLISHER", "record": false},
+        data: {"type": widget.room.type, "role": "MODERATOR", "record": false},
       );
       final statusCode = response.statusCode ?? 400;
       if (statusCode >= 200 && statusCode < 500) {
@@ -133,110 +160,110 @@ class _RoomPageState extends State<RoomPage> {
     return Scaffold(
       body: localParticipant == null
           ? Container()
-          : 
+          :
           // !isInside
           //     ? ConfigView(
           //         participant: localParticipant!,
           //         onConnect: _onConnect,
           //         userName: widget.userName,
           //       )
-          //     : 
-              Column(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width,
-                      height: MediaQuery.of(context).size.height,
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 0,
-                            child: Container(
-                              width: MediaQuery.of(context).size.width,
-                              height: MediaQuery.of(context).size.height,
-                              color: Colors.amber,
-                              child: Expanded(
-                                child: isCenteredLocalParticipantCamera
-                                    ? MediaStreamView(
-                                        borderRadius: BorderRadius.circular(0),
-                                        participant: localParticipant!,
-                                      )
-                                    : MediaStreamView(
-                                        borderRadius: BorderRadius.circular(0),
-                                        participant: remoteParticipants.values.first,
-                                      ),
-                              ),
-                            ),
+          //     :
+          Column(
+              children: [
+                SizedBox(
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.height,
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: 0,
+                        child: Container(
+                          width: MediaQuery.of(context).size.width,
+                          height: MediaQuery.of(context).size.height,
+                          color: Colors.amber,
+                          child: Expanded(
+                            child: isCenteredLocalParticipantCamera
+                                ? MediaStreamView(
+                                    borderRadius: BorderRadius.circular(0),
+                                    participant: localParticipant!,
+                                  )
+                                : MediaStreamView(
+                                    borderRadius: BorderRadius.circular(0),
+                                    participant: remoteParticipants.values.first,
+                                  ),
                           ),
-                          Positioned(
-                            bottom: 150,
-                            right: 0,
-                            left: 0,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                              child: SizedBox(
-                                width: 50,
-                                height: 213,
-                                child: Column(
-                                  children: [
-                                    SizedBox(
-                                      height: 213,
-                                      child: ListView.builder(
-                                          reverse: true,
-                                          scrollDirection: Axis.horizontal,
-                                          itemCount: math.max(0, remoteParticipants.length),
-                                          itemBuilder: (BuildContext context, int index) {
-                                            final remote = remoteParticipants.values.elementAt(index);
-                                            return GestureDetector(
-                                              onTap: () {
-                                                setState(() {
-                                                  isCenteredLocalParticipantCamera = !isCenteredLocalParticipantCamera;
-                                                });
-                                              },
-                                              child: SizedBox(
-                                                width: 150,
-                                                height: 213,
-                                                child: isCenteredLocalParticipantCamera
-                                                    ? MediaStreamView(
-                                                        borderRadius: BorderRadius.circular(8),
-                                                        participant: remote,
-                                                      )
-                                                    : MediaStreamView(
-                                                        borderRadius: BorderRadius.circular(8),
-                                                        participant: localParticipant!,
-                                                      ),
-                                              ),
-                                            );
-                                          }),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 20,
-                            right: 0,
-                            left: 0,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                              child: Container(
-                                child: Column(
-                                  children: [
-                                    if (localParticipant != null)
-                                      SafeArea(
-                                        top: false,
-                                        child: ControlsWidget(_openvidu, localParticipant!),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
+                      Positioned(
+                        bottom: 150,
+                        right: 0,
+                        left: 0,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: SizedBox(
+                            width: 50,
+                            height: 213,
+                            child: Column(
+                              children: [
+                                SizedBox(
+                                  height: 213,
+                                  child: ListView.builder(
+                                      reverse: true,
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: math.max(0, remoteParticipants.length),
+                                      itemBuilder: (BuildContext context, int index) {
+                                        final remote = remoteParticipants.values.elementAt(index);
+                                        return GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              isCenteredLocalParticipantCamera = !isCenteredLocalParticipantCamera;
+                                            });
+                                          },
+                                          child: SizedBox(
+                                            width: 150,
+                                            height: 213,
+                                            child: isCenteredLocalParticipantCamera
+                                                ? MediaStreamView(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                    participant: remote,
+                                                  )
+                                                : MediaStreamView(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                    participant: localParticipant!,
+                                                  ),
+                                          ),
+                                        );
+                                      }),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 20,
+                        right: 0,
+                        left: 0,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                          child: Container(
+                            child: Column(
+                              children: [
+                                if (localParticipant != null)
+                                  SafeArea(
+                                    top: false,
+                                    child: ControlsWidget(_openvidu, localParticipant!),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+              ],
+            ),
     );
   }
 }

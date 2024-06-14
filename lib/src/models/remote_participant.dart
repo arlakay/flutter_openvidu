@@ -19,24 +19,25 @@ class RemoteParticipant extends Participant {
     try {
       final connection = await peerConnection;
       connection.onRenegotiationNeeded = () => _createOffer(connection);
-      connection.onAddStream = (stream) {
-        this.stream = stream;
+      connection.onTrack = (stream) {
+        if (stream.track.kind == 'video') {
+          this.stream = stream.streams.first;
+        }
         audioActive = audio;
         videoActive = video;
-        dispatchEvent(OpenViduEvent.addStream,
-            {"id": id, "stream": stream, "metadata": metadata});
+        dispatchEvent(OpenViduEvent.addStream, {"id": id, "stream": stream, "metadata": metadata});
       };
 
       connection.onRemoveStream = (stream) {
         this.stream = stream;
-        dispatchEvent(OpenViduEvent.removeStream,
-            {"id": id, "stream": stream, "metadata": metadata});
+        dispatchEvent(OpenViduEvent.removeStream, {"id": id, "stream": stream, "metadata": metadata});
       };
 
       // await connection.addStream(localStream);
+
       localStream.getTracks().forEach((track) {
-            connection.addTrack(track, localStream);
-          });
+        connection.addTrack(track, localStream);
+      });
     } catch (e) {
       logger.e(e);
     }

@@ -81,6 +81,7 @@ class LocalParticipant extends Participant {
           stream?.getTracks().forEach((track) {
             connection.addTrack(track, stream!);
           });
+
           break;
         default:
       }
@@ -182,7 +183,7 @@ class LocalParticipant extends Participant {
         }
       }
 
-      _mode = StreamMode.screen;
+      _mode = StreamMode.frontCamera;
       stream?.getVideoTracks()[0].onEnded = () async {
         await _changeToCam();
       };

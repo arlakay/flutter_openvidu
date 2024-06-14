@@ -1,5 +1,6 @@
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -14,14 +15,14 @@ import '../models/stream_mode.dart';
 import '../models/token.dart';
 import '../models/video_params.dart';
 import '../support/json_rpc.dart';
-import '../support/platform/device_info.dart'
-    if (dart.library.js) '../support/platform/device_info_web.dart';
+import '../support/platform/device_info.dart' if (dart.library.js) '../support/platform/device_info_web.dart';
 import '../utils/constants.dart';
 import '../utils/logger.dart';
 import '../widgets/screen_select_dialog.dart';
 
 class OpenViduClient {
   late Token _token;
+  late SecurityContext _securityContext;
   bool _active = true;
   JsonRpc? _rpc;
   String _userId = '';
@@ -37,8 +38,7 @@ class OpenViduClient {
   /* --------------------------- REMOTE CONNECTIONS --------------------------- */
 
   /// map of SID to RemoteParticipant
-  UnmodifiableMapView<String, RemoteParticipant> get participants =>
-      UnmodifiableMapView(_participants);
+  UnmodifiableMapView<String, RemoteParticipant> get participants => UnmodifiableMapView(_participants);
   final _participants = <String, RemoteParticipant>{};
 
   UnmodifiableMapView<String, Participant> get allConnection {
@@ -55,8 +55,9 @@ class OpenViduClient {
   ///
   /// Args:
   ///   serverUrl (String): The URL of the OpenVidu Server.
-  OpenViduClient(String serverUrl) {
+  OpenViduClient(String serverUrl, SecurityContext securityContext) {
     _token = Token(serverUrl);
+    _securityContext = securityContext;
   }
 
   /// > Start the local preview, and return the local participant
@@ -68,8 +69,7 @@ class OpenViduClient {
   ///
   /// Returns:
   ///   A Future<LocalParticipant?>
-  Future<LocalParticipant?> startLocalPreview(
-      BuildContext context, StreamMode mode,
+  Future<LocalParticipant?> startLocalPreview(BuildContext context, StreamMode mode,
       {VideoParams? videoParams = VideoParams.middle}) async {
     _videoParams = videoParams ?? VideoParams.middle;
     _mode = mode;
@@ -81,7 +81,7 @@ class OpenViduClient {
     );
 
     try {
-      await _rpc?.connect(_token.wss);
+      await _rpc?.connect(_token.wss, _securityContext);
       _heartbeat();
     } catch (e) {
       logger.e(e);
@@ -253,8 +253,7 @@ class OpenViduClient {
     }
   }
 
-  Future<RemoteParticipant> _createRemoteParticipant(
-      String id, Map<String, dynamic> metadata) async {
+  Future<RemoteParticipant> _createRemoteParticipant(String id, Map<String, dynamic> metadata) async {
     return RemoteParticipant(
       id,
       _token,
@@ -263,8 +262,7 @@ class OpenViduClient {
     );
   }
 
-  Future<LocalParticipant> _createParticipant(
-      String id, Map<String, dynamic> metadata) async {
+  Future<LocalParticipant> _createParticipant(String id, Map<String, dynamic> metadata) async {
     final locaStream = _localParticipant!.stream!;
     return LocalParticipant(
       id,
@@ -299,8 +297,7 @@ class OpenViduClient {
       'video': _mode == StreamMode.screen
           ? true
           : {
-              'facingMode':
-                  _mode == StreamMode.frontCamera ? 'user' : 'environment',
+              'facingMode': _mode == StreamMode.frontCamera ? 'user' : 'environment',
               'optional': [],
             }
     };
@@ -324,8 +321,7 @@ class OpenViduClient {
         stream = await navigator.mediaDevices.getDisplayMedia(mediaConstraints);
       }
     } else {
-      stream = await navigator.mediaDevices
-          .getUserMedia({'audio': true, 'video': true});
+      stream = await navigator.mediaDevices.getUserMedia({'audio': true, 'video': true});
     }
 
     return stream;
@@ -371,7 +367,6 @@ class OpenViduClient {
 
         logger.i(_participants.entries.toString());
 
-        
         if (_participants.containsKey(id)) {
           try {
             var connection = _participants[id];
@@ -390,8 +385,7 @@ class OpenViduClient {
         final param = params as Map<String, dynamic>;
         final id = params["id"];
 
-        final stream =
-            param.containsKey('streams') ? param["streams"][0] : null;
+        final stream = param.containsKey('streams') ? param["streams"][0] : null;
         _dispatchEvent(OpenViduEvent.userPublished, {
           "id": id,
           "audioActive": stream['audioActive'] ?? false,
@@ -435,8 +429,7 @@ class OpenViduClient {
 
   Future<void> _heartbeat() async {
     try {
-      await _rpc?.send(Methods.ping,
-          params: {"interval": 5000}, hasResult: true);
+      await _rpc?.send(Methods.ping, params: {"interval": 5000}, hasResult: true);
     } catch (e) {
       _dispatchEvent(OpenViduEvent.error, {"error": NetworkError()});
     }

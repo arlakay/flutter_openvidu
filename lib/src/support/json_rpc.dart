@@ -80,21 +80,13 @@ class JsonRpc {
     }
   }
 
-  connect(String url) async {
-    logger.d(url);
+  connect(String url, SecurityContext securityContext) async {
+    logger.d('url wss = $url');
     try {
-      final pemFilePath = await loadSSLOpenVidu();
-      final pemFile = File(pemFilePath ?? '');
-
-      final securityContext = SecurityContext();
-      if (pemFile.existsSync()) {
-        securityContext.setTrustedCertificatesBytes(pemFile.readAsBytesSync());
-      }
-
       // _channel = WebSocketChannel.connect(Uri.parse(url));
       _channel = IOWebSocketChannel.connect(
         Uri.parse(url),
-        // customClient: HttpClient(context: securityContext),
+        customClient: HttpClient(context: securityContext),
       );
 
       isActive = true;

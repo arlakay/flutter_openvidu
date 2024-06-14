@@ -31,6 +31,7 @@ class _MediaStreamViewState extends State<MediaStreamView> {
   void initState() {
     super.initState();
     _render = RTCVideoRenderer();
+    setState(() {});
   }
 
   @override
