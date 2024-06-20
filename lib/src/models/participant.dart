@@ -20,10 +20,11 @@ abstract class Participant {
       'OfferToReceiveVideo': true,
     },
     'optional': [],
+    'offerToReceiveAudio': true,
+    'offerToReceiveVideo': true,
   };
 
-  String get sdpSemantics =>
-      WebRTC.platformIsWindows ? 'plan-b' : 'unified-plan';
+  String get sdpSemantics => WebRTC.platformIsAndroid ? 'unified-plan' : 'plan-b';
 
   final Map<String, dynamic> _config = {
     'mandatory': {},
@@ -43,8 +44,7 @@ abstract class Participant {
   }
 
   Future<RTCPeerConnection> _getPrePeerConnection() async {
-    final connection =
-        await createPeerConnection(_getPrevConfiguration(), _config);
+    final connection = await createPeerConnection(_getPrevConfiguration(), _config);
     connection.onIceCandidate = (candidate) {
       Map<String, dynamic> iceCandidateParams = {
         'sdpMid': candidate.sdpMid,
@@ -77,9 +77,12 @@ abstract class Participant {
         "endpointName": streamId ?? id
       };
       Future.delayed(
-          const Duration(seconds: 1),
-          () async => await rpc.send(Methods.onIceCandidate,
-              params: iceCandidateParams));
+        const Duration(seconds: 1),
+        () async => await rpc.send(
+          Methods.onIceCandidate,
+          params: iceCandidateParams,
+        ),
+      );
     };
 
     connection.onSignalingState = (state) {
@@ -140,8 +143,8 @@ abstract class Participant {
     });
     final connection = await peerConnection;
     connection.close();
-    connection.dispose();
-    stream?.dispose();
+    // connection.dispose();
+    // stream?.dispose();
   }
 
   Future<void> addIceCandidate(Map<String, dynamic> candidate) async {
@@ -151,8 +154,7 @@ abstract class Participant {
       candidate["sdpMid"],
       candidate["sdpMLineIndex"],
     );
-    if (connection.signalingState ==
-        RTCSignalingState.RTCSignalingStateStable) {
+    if (connection.signalingState == RTCSignalingState.RTCSignalingStateStable) {
       await connection.addCandidate(rtcIceCandidate);
     } else {
       _candidateTemps.add(rtcIceCandidate);

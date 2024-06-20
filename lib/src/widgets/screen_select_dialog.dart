@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 
+import '../utils/logger.dart';
+
 class ThumbnailWidget extends StatefulWidget {
   const ThumbnailWidget(
       {Key? key,
@@ -54,7 +56,7 @@ class ThumbnailWidgetState extends State<ThumbnailWidget> {
           child: InkWell(
             onTap: () {
               if (kDebugMode) {
-                print('Selected source id => ${widget.source.id}');
+                logger.d('Selected source id => ${widget.source.id}');
               }
               widget.onTap(widget.source);
             },
@@ -129,7 +131,7 @@ class ScreenSelectDialog extends Dialog {
       var sources = await rtc.desktopCapturer.getSources(types: [_sourceType]);
       for (var element in sources) {
         if (kDebugMode) {
-          print(
+          logger.d(
               'name: ${element.name}, id: ${element.id}, type: ${element.type}');
         }
       }
@@ -145,7 +147,7 @@ class ScreenSelectDialog extends Dialog {
       return;
     } catch (e) {
       if (kDebugMode) {
-        print(e.toString());
+        logger.e(e.toString());
       }
     }
   }

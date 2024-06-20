@@ -62,23 +62,23 @@ class JsonRpc {
     _onDispose = onDispose;
   }
 
-  Future<String?> loadSSLOpenVidu() async {
-    try {
-      final extDir = await getApplicationDocumentsDirectory();
-      final dirPath = '${extDir.path}/Bebas/OpenVidu/cert';
-      await Directory(dirPath).create(recursive: true);
-      final filePath = '$dirPath/${DateTime.now().millisecondsSinceEpoch.toString()}.pem';
+  // Future<String?> loadSSLOpenVidu() async {
+  //   try {
+  //     final extDir = await getApplicationDocumentsDirectory();
+  //     final dirPath = '${extDir.path}/Bebas/OpenVidu/cert';
+  //     await Directory(dirPath).create(recursive: true);
+  //     final filePath = '$dirPath/${DateTime.now().millisecondsSinceEpoch.toString()}.pem';
 
-      final byteData = await rootBundle.load('assets/ssl/vidudev_bankmas_net.pem');
-      final file = File(filePath);
-      await file.writeAsBytes(byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
+  //     final byteData = await rootBundle.load('assets/ssl/vidudev_bankmas_net.pem');
+  //     final file = File(filePath);
+  //     await file.writeAsBytes(byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
 
-      return filePath;
-    } catch (e) {
-      logger.d('FAILED TO LOAD VIDU SSL: $e');
-      return null;
-    }
-  }
+  //     return filePath;
+  //   } catch (e) {
+  //     logger.d('FAILED TO LOAD VIDU SSL: $e');
+  //     return null;
+  //   }
+  // }
 
   connect(String url, SecurityContext securityContext) async {
     logger.d('url wss = $url');

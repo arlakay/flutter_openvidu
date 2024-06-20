@@ -29,8 +29,8 @@ class LocalParticipant extends Participant {
   ) : super.preview() {
     _dispatchEvent = dispatchEvent;
     this.stream = stream;
-    audioActive = stream.getAudioTracks().any((item) => item.enabled == true);
-    videoActive = stream.getVideoTracks().any((item) => item.enabled == true);
+    audioActive = stream.getAudioTracks().any((item) => item.enabled == true) ?? false;
+    videoActive = stream.getVideoTracks().any((item) => item.enabled == true) ?? false;
   }
 
   LocalParticipant(
@@ -57,8 +57,8 @@ class LocalParticipant extends Participant {
 
     if (mode == StreamMode.screen) typeOfVideo = "SCREEN";
 
-    audioActive = stream.getAudioTracks().any((item) => item.enabled == true);
-    videoActive = stream.getVideoTracks().any((item) => item.enabled == true);
+    audioActive = stream.getAudioTracks().any((item) => item.enabled == true) ?? false;
+    videoActive = stream.getVideoTracks().any((item) => item.enabled == true) ?? false;
 
     frameRate = videoParams.frameRate;
     width = videoParams.width;
@@ -96,8 +96,8 @@ class LocalParticipant extends Participant {
           'hasAudio': true,
           'doLoopback': false,
           'hasVideo': true,
-          'audioActive': audioActive,
-          'videoActive': videoActive,
+          'audioActive': true,
+          'videoActive': true,
           'typeOfVideo': typeOfVideo,
           'frameRate': frameRate,
           'videoDimensions': json.encode({"width": width, "height": height}),
@@ -143,7 +143,16 @@ class LocalParticipant extends Participant {
 
     for (var sender in senders) {
       if (sender.track!.kind == 'video') {
-        sender.replaceTrack(stream!.getVideoTracks()[0]);
+        sender.replaceTrack(stream!.getVideoTracks().first);
+        // stream!.getVideoTracks().forEach((track) {
+        //   sender.replaceTrack(track);
+        // });
+      }
+      if (sender.track!.kind == 'audio') {
+        sender.replaceTrack(stream!.getVideoTracks().first);
+        // stream!.getAudioTracks().forEach((track) {
+        //   sender.replaceTrack(track);
+        // });
       }
     }
     _dispatchEvent(OpenViduEvent.updatedLocal, {'mode': _mode, 'localParticipant': this});
@@ -183,7 +192,7 @@ class LocalParticipant extends Participant {
         }
       }
 
-      _mode = StreamMode.frontCamera;
+      _mode = StreamMode.screen;
       stream?.getVideoTracks()[0].onEnded = () async {
         await _changeToCam();
       };
@@ -301,7 +310,6 @@ class LocalParticipant extends Participant {
   Future<void> publishAudio(bool enable) async {
     if (stream == null) return;
     stream!.getAudioTracks().forEach((e) => e.enabled = enable);
-    // stream!.getAudioTracks().forEach((e) => e.muted = enable);
     audioActive = enable;
     _dispatchEvent(OpenViduEvent.updatedLocal, {'mode': _mode, 'localParticipant': this});
     if (!_published) return;

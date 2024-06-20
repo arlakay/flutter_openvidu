@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../utils/constants.dart';
@@ -19,25 +21,41 @@ class RemoteParticipant extends Participant {
     try {
       final connection = await peerConnection;
       connection.onRenegotiationNeeded = () => _createOffer(connection);
-      connection.onTrack = (stream) {
-        if (stream.track.kind == 'video') {
-          this.stream = stream.streams.first;
+
+      if (sdpSemantics == "plan-b") {
+        connection.onAddStream = (stream) {
+          this.stream = stream;
+          audioActive = audio;
+          videoActive = video;
+          dispatchEvent(OpenViduEvent.addStream, {"id": id, "stream": stream, "metadata": metadata});
+        };
+
+        connection.onRemoveStream = (stream) {
+          this.stream = stream;
+          dispatchEvent(OpenViduEvent.removeStream, {"id": id, "stream": stream, "metadata": metadata});
+        };
+
+        connection.addStream(localStream);
+      }
+
+      if (sdpSemantics == "unified-plan") {
+        connection.onAddTrack = (stream, track) {
+          this.stream = stream;
+          audioActive = audio;
+          videoActive = video;
+          dispatchEvent(OpenViduEvent.addStream, {"id": id, "stream": stream, "metadata": metadata});
+        };
+
+        connection.onRemoveTrack = (stream, track) {
+          this.stream = stream;
+          dispatchEvent(OpenViduEvent.removeStream, {"id": id, "stream": stream, "metadata": metadata});
+        };
+
+        final localTracks = localStream.getTracks();
+        for (var track in localTracks) {
+          unawaited(connection.addTrack(track, localStream));
         }
-        audioActive = audio;
-        videoActive = video;
-        dispatchEvent(OpenViduEvent.addStream, {"id": id, "stream": stream, "metadata": metadata});
-      };
-
-      connection.onRemoveStream = (stream) {
-        this.stream = stream;
-        dispatchEvent(OpenViduEvent.removeStream, {"id": id, "stream": stream, "metadata": metadata});
-      };
-
-      // await connection.addStream(localStream);
-
-      localStream.getTracks().forEach((track) {
-        connection.addTrack(track, localStream);
-      });
+      }
     } catch (e) {
       logger.e(e);
     }

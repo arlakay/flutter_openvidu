@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:openvidu_client/openvidu_client.dart';
+import 'package:openvidu_client_example/app/utils/logger.dart';
 
 import '../utils/extensions.dart';
 
@@ -38,11 +39,8 @@ class _ControlsWidgetState extends State<ControlsWidget> {
   @override
   void initState() {
     Hardware.instance.enumerateDevices().then(
-      (value) {
-        print('ersa cek = ${value.toString()}');
-        return _loadDevices(value);
-      },
-    );
+          (value) => _loadDevices(value),
+        );
     final audioId = participant.stream?.getVideoTracks().firstOrNull?.id;
     final videoId = participant.stream?.getVideoTracks().firstOrNull?.id;
     selectedAudioInput = _audioInputs?.firstWhereOrNull((el) => el.deviceId == audioId);
@@ -120,10 +118,10 @@ class _ControlsWidgetState extends State<ControlsWidget> {
   int indexCam = 0;
 
   void _selectVideoInputV2() async {
-    print('cek cam index = ${_videoInputs![indexCam]}');
+    logger.d('cek cam index = ${_videoInputs![indexCam]}');
 
     // continuous switch between 0 and 1 camera index
-    indexCam = 1 - indexCam; 
+    indexCam = 1 - indexCam;
 
     widget.participant.setVideoInput(_videoInputs![indexCam].deviceId);
     selectedVideoInput = _videoInputs![indexCam];
@@ -137,7 +135,7 @@ class _ControlsWidgetState extends State<ControlsWidget> {
       final videoId = participant.stream?.getVideoTracks().firstOrNull?.id;
       selectedVideoInput = _videoInputs?.firstWhereOrNull((el) => el.deviceId == videoId);
     } catch (error) {
-      print('could not restart track: $error');
+      logger.e('could not restart track: $error');
       return;
     }
   }

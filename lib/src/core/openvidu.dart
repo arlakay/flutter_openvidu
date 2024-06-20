@@ -31,7 +31,7 @@ class OpenViduClient {
 
   /* ---------------------------- LOCAL CONNECCTION --------------------------- */
   StreamMode _mode = StreamMode.frontCamera;
-  VideoParams _videoParams = VideoParams.middle;
+  VideoParams _videoParams = VideoParams.high;
 
   LocalParticipant? _localParticipant;
 
@@ -321,7 +321,14 @@ class OpenViduClient {
         stream = await navigator.mediaDevices.getDisplayMedia(mediaConstraints);
       }
     } else {
-      stream = await navigator.mediaDevices.getUserMedia({'audio': true, 'video': true});
+      stream = await navigator.mediaDevices.getUserMedia({
+        'audio': true,
+        'video': {
+          'facingMode': _mode == StreamMode.backCamera ? 'environment' : 'user',
+          'width': '1920',
+          'height': '1080'
+        }
+      });
     }
 
     return stream;
