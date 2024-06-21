@@ -24,7 +24,7 @@ abstract class Participant {
     'offerToReceiveVideo': true,
   };
 
-  String get sdpSemantics => WebRTC.platformIsAndroid ? 'unified-plan' : 'plan-b';
+  String get sdpSemantics => WebRTC.platformIsMobile ? 'plan-b' : 'unified-plan';
 
   final Map<String, dynamic> _config = {
     'mandatory': {},
@@ -51,7 +51,10 @@ abstract class Participant {
         'sdpMLineIndex': candidate.sdpMLineIndex,
         'candidate': candidate.candidate,
       };
-      rpc.send(Methods.onIceCandidate, params: iceCandidateParams);
+      Future.delayed(
+        const Duration(seconds: 1),
+        () async => await rpc.send(Methods.onIceCandidate, params: iceCandidateParams),
+      );
     };
 
     connection.onSignalingState = (state) {

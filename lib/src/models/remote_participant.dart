@@ -53,7 +53,7 @@ class RemoteParticipant extends Participant {
 
         final localTracks = localStream.getTracks();
         for (var track in localTracks) {
-          unawaited(connection.addTrack(track, localStream));
+          connection.addTrack(track, localStream);
         }
       }
     } catch (e) {

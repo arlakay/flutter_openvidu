@@ -22,7 +22,7 @@ import '../widgets/screen_select_dialog.dart';
 
 class OpenViduClient {
   late Token _token;
-  late SecurityContext _securityContext;
+  SecurityContext _securityContext = SecurityContext();
   bool _active = true;
   JsonRpc? _rpc;
   String _userId = '';
@@ -31,7 +31,7 @@ class OpenViduClient {
 
   /* ---------------------------- LOCAL CONNECCTION --------------------------- */
   StreamMode _mode = StreamMode.frontCamera;
-  VideoParams _videoParams = VideoParams.high;
+  VideoParams _videoParams = VideoParams.middle;
 
   LocalParticipant? _localParticipant;
 
@@ -325,8 +325,8 @@ class OpenViduClient {
         'audio': true,
         'video': {
           'facingMode': _mode == StreamMode.backCamera ? 'environment' : 'user',
-          'width': '1920',
-          'height': '1080'
+          'width': '480',
+          'height': '640'
         }
       });
     }
@@ -355,10 +355,15 @@ class OpenViduClient {
     switch (method) {
       case Events.iceCandidate:
         var id = params["senderConnectionId"];
+        logger.d('senderConnectionId 1 = $id');
         [
           ..._participants.entries.map((e) => e.value),
           _localParticipant,
-        ].firstWhere((c) => (c?.id ?? '') == id)?.addIceCandidate(params);
+        ].firstWhere((c) {
+          logger.d('participant id 2 = ${c?.id}');
+
+          return (c?.id ?? '') == id;
+        })?.addIceCandidate(params);
         break;
       case Events.sendMessage:
         logger.i(message);
