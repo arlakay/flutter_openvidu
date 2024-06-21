@@ -355,12 +355,12 @@ class OpenViduClient {
     switch (method) {
       case Events.iceCandidate:
         var id = params["senderConnectionId"];
-        logger.d('senderConnectionId 1 = $id');
+        print('senderConnectionId 1 = $id');
         [
           ..._participants.entries.map((e) => e.value),
           _localParticipant,
         ].firstWhere((c) {
-          logger.d('participant id 2 = ${c?.id}');
+          print('participant id 2 = ${c?.id}');
 
           return (c?.id ?? '') == id;
         })?.addIceCandidate(params);
