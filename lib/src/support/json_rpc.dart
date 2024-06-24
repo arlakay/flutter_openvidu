@@ -5,8 +5,6 @@ import 'dart:io';
 // import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -82,6 +80,7 @@ class JsonRpc {
 
   connect(String url, SecurityContext securityContext) async {
     logger.d('url wss = $url');
+
     try {
       // _channel = WebSocketChannel.connect(Uri.parse(url));
       _channel = IOWebSocketChannel.connect(
@@ -150,6 +149,7 @@ class JsonRpc {
   /// Handles a decoded response from the server after batches have been
   /// resolved.
   void _handleSingleResponse(response) {
+    logger.d('_handleSingleResponse = ${response}');
     if (!_isResponseValid(response)) return;
     var id = response['id'];
     id = (id is String) ? int.parse(id) : id;

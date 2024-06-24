@@ -25,21 +25,16 @@ class _ConnectPageState extends State<ConnectPage> {
   final TextEditingController _textUrlController = TextEditingController();
   final TextEditingController _textSecretController = TextEditingController();
   final TextEditingController _textPortController = TextEditingController();
-  final TextEditingController _textIceServersController =
-      TextEditingController();
+  final TextEditingController _textIceServersController = TextEditingController();
 
   final Dio _dio = Dio();
 
   Future<void> _readPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    _textUrlController.text =
-        prefs.getString('textUrl') ?? _textUrlController.text;
-    _textSecretController.text =
-        prefs.getString('textSecret') ?? _textSecretController.text;
-    _textPortController.text =
-        prefs.getString('textPort') ?? _textPortController.text;
-    _textIceServersController.text =
-        prefs.getString('textIceServers') ?? _textIceServersController.text;
+    _textUrlController.text = prefs.getString('textUrl') ?? _textUrlController.text;
+    _textSecretController.text = prefs.getString('textSecret') ?? _textSecretController.text;
+    _textPortController.text = prefs.getString('textPort') ?? _textPortController.text;
+    _textIceServersController.text = prefs.getString('textIceServers') ?? _textIceServersController.text;
     logger.i('Loaded user inputs value.');
   }
 
@@ -77,31 +72,31 @@ class _ConnectPageState extends State<ConnectPage> {
       // );
       // final statusCode = response.statusCode ?? 400;
       // if (statusCode >= 200 && statusCode < 500) {
-        var response2 = await _dio.post(
-          '/sessions/${_textSessionController.text}/connection',
-          data: {
-            "type": "WEBRTC",
-            "data": "My Server Data",
-            "record": false,
-            "role": "PUBLISHER",
-          },
+      var response2 = await _dio.post(
+        '/sessions/${_textSessionController.text}/connection',
+        data: {
+          "type": "WEBRTC",
+          "data": "My Server Data",
+          "record": false,
+          "role": "PUBLISHER",
+        },
+      );
+      final statusCode2 = response2.statusCode ?? 400;
+      if (statusCode2 >= 200 && statusCode2 < 500) {
+        logger.i(response2.data);
+        final connection = Session.fromJson(response2.data);
+        await nav.push(
+          MaterialPageRoute(
+              builder: (_) => RoomPage(
+                    room: connection,
+                    userName: _textUserNameController.text,
+                    serverUrl: path,
+                    secret: _textSecretController.text,
+                  )),
         );
-        final statusCode2 = response2.statusCode ?? 400;
-        if (statusCode2 >= 200 && statusCode2 < 500) {
-          logger.i(response2.data);
-          final connection = Session.fromJson(response2.data);
-          await nav.push(
-            MaterialPageRoute(
-                builder: (_) => RoomPage(
-                      room: connection,
-                      userName: _textUserNameController.text,
-                      serverUrl: path,
-                      secret: _textSecretController.text,
-                    )),
-          );
-        }
+      }
       // }
-    } catch (e,s) {
+    } catch (e, s) {
       logger.e('$e, ${s.toString()}');
     }
   }
@@ -109,11 +104,13 @@ class _ConnectPageState extends State<ConnectPage> {
   @override
   void initState() {
     super.initState();
-    // _textSessionController.text = 'Session${Random().nextInt(1000)}';
-    _textSessionController.text = '202405140000033b72c76c-07f6-4e94-b1c8-df3cf3d8dd32';
+    _textSessionController.text = 'Session_${Random().nextInt(999)}';
+    // _textSessionController.text = '202405140000033b72c76c-07f6-4e94-b1c8-df3cf3d8dd32';
     _textUserNameController.text = 'Participant${Random().nextInt(1000)}';
     _textUrlController.text = 'vidudev.bankmas.net';
     _textSecretController.text = 'QkFOS01BUzIwMjIK';
+    // _textSecretController.text = 'MY_SECRET';
+
     _textPortController.text = '443';
     _textIceServersController.text = 'stun.l.google.com:19302';
     _readPrefs();

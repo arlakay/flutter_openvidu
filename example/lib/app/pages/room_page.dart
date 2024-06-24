@@ -103,12 +103,6 @@ class _RoomPageState extends State<RoomPage> {
     _openvidu.on(OpenViduEvent.removeStream, (params) async {
       remoteParticipants = {..._openvidu.participants};
       setState(() {});
-      if (remoteParticipants.isEmpty) {
-        //end session because remote participant left/empty
-        // final nav = Navigator.of(context);
-        await _openvidu.disconnect();
-        // nav.pop();
-      }
     });
 
     _openvidu.on(OpenViduEvent.publishVideo, (params) {
@@ -284,7 +278,6 @@ class _RoomPageState extends State<RoomPage> {
 
   @override
   void dispose() {
-    _openvidu.disconnect();
     super.dispose();
   }
 }

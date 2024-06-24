@@ -78,9 +78,13 @@ class LocalParticipant extends Participant {
 
           break;
         case "unified-plan":
-          stream?.getTracks().forEach((track) {
-            connection.addTrack(track, stream!);
-          });
+          if (stream != null) {
+            final streamTracks = stream?.getTracks();
+            assert(streamTracks != null, 'streamTracks must be not null');
+            for (var track in streamTracks!) {
+              connection.addTrack(track, stream!);
+            }
+          }
 
           break;
         default:
@@ -319,7 +323,7 @@ class LocalParticipant extends Participant {
   Future<void> _streamPropertyChanged(
     String property,
     Object value,
-    String reason,
+    String? reason,
   ) async {
     if (!rpc.isActive) return;
     await rpc.send(

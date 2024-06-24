@@ -4,7 +4,6 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../utils/constants.dart';
 import '../utils/logger.dart';
-import 'local_participant.dart';
 import 'openvidu_events.dart';
 import 'participant.dart';
 
@@ -20,38 +19,58 @@ class RemoteParticipant extends Participant {
   ) async {
     try {
       final connection = await peerConnection;
-      connection.onRenegotiationNeeded = () => _createOffer(connection);
+
+      connection.onIceConnectionState = (state) {
+        logger.d('onIceConnectionState = $state');
+        if (state == RTCIceConnectionState.RTCIceConnectionStateFailed) {
+          connection.restartIce();
+        }
+      };
+
+      connection.onRenegotiationNeeded = () async {
+        return _createOffer(await peerConnection);
+      };
 
       if (sdpSemantics == "plan-b") {
+        connection.onRemoveStream = (stream) {
+          logger.d('onRemoveStream = ${stream.toString()}');
+
+          this.stream = stream;
+          dispatchEvent(OpenViduEvent.removeStream, {"id": id, "stream": stream, "metadata": metadata});
+        };
+
         connection.onAddStream = (stream) {
+          logger.d('onAddStream = ${stream.toString()}');
           this.stream = stream;
           audioActive = audio;
           videoActive = video;
           dispatchEvent(OpenViduEvent.addStream, {"id": id, "stream": stream, "metadata": metadata});
-        };
-
-        connection.onRemoveStream = (stream) {
-          this.stream = stream;
-          dispatchEvent(OpenViduEvent.removeStream, {"id": id, "stream": stream, "metadata": metadata});
         };
 
         connection.addStream(localStream);
       }
 
       if (sdpSemantics == "unified-plan") {
+        connection.onRemoveTrack = (stream, track) {
+          logger.d('onRemoveTrack1 = ${stream.toString()}');
+          logger.d('onRemoveTrack2 = ${track.toString()}');
+
+          this.stream = stream;
+          dispatchEvent(OpenViduEvent.removeStream, {"id": id, "stream": stream, "metadata": metadata});
+        };
+
         connection.onAddTrack = (stream, track) {
+          logger.d('onAddTrack1 = ${stream.toString()}');
+          logger.d('onAddTrack2 = ${track.toString()}');
+
           this.stream = stream;
           audioActive = audio;
           videoActive = video;
           dispatchEvent(OpenViduEvent.addStream, {"id": id, "stream": stream, "metadata": metadata});
         };
 
-        connection.onRemoveTrack = (stream, track) {
-          this.stream = stream;
-          dispatchEvent(OpenViduEvent.removeStream, {"id": id, "stream": stream, "metadata": metadata});
-        };
-
         final localTracks = localStream.getTracks();
+        logger.d('localTrack = ${localTracks.toString()}');
         for (var track in localTracks) {
           connection.addTrack(track, localStream);
         }
@@ -64,24 +83,35 @@ class RemoteParticipant extends Participant {
   _createOffer(RTCPeerConnection connection) async {
     final offer = await connection.createOffer({
       'mandatory': {
-        'OfferToReceiveAudio': !(runtimeType == LocalParticipant),
-        'OfferToReceiveVideo': !(runtimeType == LocalParticipant),
+        'OfferToReceiveAudio': true,
+        'OfferToReceiveVideo': true,
       },
       "optional": [
-        {"DtlsSrtpKeyAgreement": true},
+        {'DtlsSrtpKeyAgreement': true}
       ],
     });
+
     await connection.setLocalDescription(offer);
 
-    var result = await rpc.send(
-      Methods.receiveVideoFrom,
-      params: {'sender': id, 'sdpOffer': offer.sdp},
-      hasResult: true,
-    );
-    logger.d(result);
+    connection.onIceGatheringState = (state) async {
+      logger.d(' onIceGatheringState= ${state.name}');
 
-    final answer = RTCSessionDescription(result['sdpAnswer'], 'answer');
-    await connection.setRemoteDescription(answer);
+      if (state == RTCIceGatheringState.RTCIceGatheringStateComplete) {
+        final result = await rpc.send(
+          Methods.receiveVideoFrom,
+          params: {
+            'sdpOffer': offer.sdp,
+            'sender': id,
+          },
+          hasResult: true,
+        );
+
+        logger.d('receiveVideoFrom = $result');
+
+        final answer = RTCSessionDescription(result['sdpAnswer'], 'answer');
+        await connection.setRemoteDescription(answer);
+      }
+    };
   }
 
   @override
@@ -91,6 +121,8 @@ class RemoteParticipant extends Participant {
       logger.i(track.toString());
     });
     stream?.dispose();
+    stream = null;
+
     return super.close();
   }
 }

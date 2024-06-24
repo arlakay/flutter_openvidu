@@ -209,10 +209,14 @@ class OpenViduClient {
     } catch (e) {
       logger.e(e);
     }
+
+    logger.d('_addRemoteConnection id = $id');
     final connection = await _createRemoteParticipant(id, metadata);
+    logger.d('_addRemoteConnection connection = $connection');
     _participants[id] = connection;
     _dispatchEvent(OpenViduEvent.userJoined, {"id": id});
-    logger.d(model["streams"]);
+    logger.d('_addRemoteConnection1 = ${model.toString()}');
+    logger.d('_addRemoteConnection2 = ${model["streams"]}');
     if (model["streams"] != null) {
       final stream = model.containsKey('streams') ? model["streams"][0] : null;
       _dispatchEvent(OpenViduEvent.userPublished, {
@@ -354,13 +358,15 @@ class OpenViduClient {
 
     switch (method) {
       case Events.iceCandidate:
+        logger.i('iceCandidate = $params');
+
         var id = params["senderConnectionId"];
-        print('senderConnectionId 1 = $id');
+        logger.d('senderConnectionId 1 = $id');
         [
           ..._participants.entries.map((e) => e.value),
           _localParticipant,
         ].firstWhere((c) {
-          print('participant id 2 = ${c?.id}');
+          logger.d('participant id 2 = ${c?.id}');
 
           return (c?.id ?? '') == id;
         })?.addIceCandidate(params);
@@ -370,11 +376,11 @@ class OpenViduClient {
         _dispatchEvent(OpenViduEvent.reciveMessage, params);
         break;
       case Events.participantJoined:
-        logger.i(message);
+        logger.i('participantJoined = $params');
         await _addRemoteConnection(params);
         break;
       case Events.participantLeft:
-        logger.i(message);
+        logger.i('participantLeft = $params');
         final id = params["connectionId"];
 
         logger.i(_participants.entries.toString());
@@ -384,7 +390,6 @@ class OpenViduClient {
             var connection = _participants[id];
             connection?.close();
             _participants.remove(id);
-            disconnect();
           } catch (e) {
             logger.w(e);
           }
@@ -393,11 +398,11 @@ class OpenViduClient {
         }
         break;
       case Events.participantPublished:
-        logger.i(message);
+        logger.i('participantPublished = $params');
         final param = params as Map<String, dynamic>;
         final id = params["id"];
 
-        final stream = param.containsKey('streams') ? param["streams"][0] : null;
+        final stream = param.containsKey('streams') ? param["streams"].first : null;
         _dispatchEvent(OpenViduEvent.userPublished, {
           "id": id,
           "audioActive": stream['audioActive'] ?? false,
@@ -405,12 +410,12 @@ class OpenViduClient {
         });
         break;
       case Events.participantUnpublished:
-        logger.i(message);
+        logger.i('participantUnpublished = $params');
         final id = params["id"];
         _dispatchEvent(OpenViduEvent.userUnpublished, {"id": id});
         break;
       case Events.streamPropertyChanged:
-        logger.i(message);
+        logger.i('streamPropertyChanged = $params');
         final eventStr = params["reason"];
         final id = params["connectionId"];
         final property = params["property"] as String;
@@ -419,16 +424,18 @@ class OpenViduClient {
           final remoteParticipant = _participants[id];
           if (property == 'videoActive') {
             logger.i(remoteParticipant!.videoActive);
-            remoteParticipant.videoActive = value == 'true';
+            remoteParticipant.videoActive = value == true;
             logger.i(remoteParticipant.videoActive);
           }
           if (property == 'audioActive') {
-            remoteParticipant!.audioActive = value == 'true';
+            remoteParticipant!.audioActive = value == true;
           }
         }
         final event = OpenViduEvent.values.firstWhere((e) {
           return e.toString().split(".")[1] == eventStr;
         });
+        logger.i('_dispatchEvent = $event');
+
         _dispatchEvent(event, {"id": id, "value": value});
         break;
       default:

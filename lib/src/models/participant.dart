@@ -24,7 +24,8 @@ abstract class Participant {
     'offerToReceiveVideo': true,
   };
 
-  String get sdpSemantics => WebRTC.platformIsMobile ? 'plan-b' : 'unified-plan';
+  // String get sdpSemantics => WebRTC.platformIsMobile ? 'unified-plan' : 'plan-b';
+  String get sdpSemantics => 'plan-b';
 
   final Map<String, dynamic> _config = {
     'mandatory': {},
@@ -103,18 +104,24 @@ abstract class Participant {
   Map<String, dynamic> _getPrevConfiguration() {
     return {
       "iceServers": [
+        // {
+        //   "urls": [
+        //     "turn:173.194.72.127:19305?transport=udp",
+        //     "turn:[2404:6800:4008:C01::7F]:19305?transport=udp",
+        //     "turn:173.194.72.127:443?transport=tcp",
+        //     "turn:[2404:6800:4008:C01::7F]:443?transport=tcp"
+        //   ],
+        //   "username": "CKjCuLwFEgahxNRjuTAYzc/s6OMT",
+        //   "credential": "u1SQDR/SQsPQIxXNWQT7czc/G4c="
+        // },
         {
           "urls": [
-            "turn:173.194.72.127:19305?transport=udp",
-            "turn:[2404:6800:4008:C01::7F]:19305?transport=udp",
-            "turn:173.194.72.127:443?transport=tcp",
-            "turn:[2404:6800:4008:C01::7F]:443?transport=tcp"
-          ],
-          "username": "CKjCuLwFEgahxNRjuTAYzc/s6OMT",
-          "credential": "u1SQDR/SQsPQIxXNWQT7czc/G4c="
-        },
-        {
-          "urls": ["stun:stun.l.google.com:19302"]
+            "stun:stun.l.google.com:19302",
+            "stun:stun1.l.google.com:19302",
+            "stun:stun2.l.google.com:19302",
+            "stun:stun3.l.google.com:19302",
+            "stun:stun4.l.google.com:19302",
+          ]
         }
       ]
     };
@@ -131,11 +138,11 @@ abstract class Participant {
         {
           "urls": [stun]
         },
-        {
-          "urls": [turn1, turn2],
-          "username": token.turnUsername,
-          "credential": token.turnCredential
-        },
+        // {
+        //   "urls": [turn1, turn2],
+        //   "username": token.turnUsername,
+        //   "credential": token.turnCredential
+        // },
       ]
     };
   }
@@ -144,10 +151,11 @@ abstract class Participant {
     stream?.getTracks().forEach((track) async {
       await track.stop();
     });
+    stream?.dispose();
+    stream = null;
+
     final connection = await peerConnection;
-    connection.close();
-    // connection.dispose();
-    // stream?.dispose();
+    connection.dispose();
   }
 
   Future<void> addIceCandidate(Map<String, dynamic> candidate) async {
